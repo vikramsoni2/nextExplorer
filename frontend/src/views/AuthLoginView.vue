@@ -14,6 +14,8 @@ const loginError = ref('');
 const isSubmittingLogin = ref(false);
 
 const statusError = computed(() => auth.lastError || '');
+const isOidcMode = computed(() => auth.mode === 'oidc');
+const providerName = computed(() => auth.oidc?.provider?.name || 'your identity provider');
 const redirectTarget = computed(() => {
   const redirect = route.query?.redirect;
   if (typeof redirect === 'string' && redirect.trim()) {
@@ -48,7 +50,7 @@ watch(
 watch(
   () => auth.requiresSetup,
   (requiresSetup) => {
-    if (requiresSetup && auth.hasStatus) {
+    if (requiresSetup && auth.hasStatus && !isOidcMode.value) {
       const redirect = redirectTarget.value;
       router.replace({ name: 'auth-setup', ...(redirect ? { query: { redirect } } : {}) });
     }
@@ -59,6 +61,11 @@ watch(
 onMounted(() => {
   if (!auth.hasStatus && !auth.isLoading) {
     auth.initialize();
+  }
+
+  const errorMessage = typeof route.query?.error === 'string' ? route.query.error : '';
+  if (errorMessage) {
+    loginError.value = decodeURIComponent(errorMessage);
   }
 });
 
@@ -87,6 +94,18 @@ const handleLoginSubmit = async () => {
     isSubmittingLogin.value = false;
   }
 };
+
+const handleOidcLogin = async () => {
+  resetErrors();
+  isSubmittingLogin.value = true;
+  try {
+    await auth.beginOidcLogin(redirectTarget.value);
+  } catch (error) {
+    loginError.value = error instanceof Error ? error.message : 'Failed to redirect to your identity provider.';
+  } finally {
+    isSubmittingLogin.value = false;
+  }
+};
 </script>
 
 <template>
@@ -110,13 +129,29 @@ const handleLoginSubmit = async () => {
 
         <div class="mt-6 space-y-6">
           <div>
-            <h2 class="text-2xl font-semibold text-white">Unlock your explorer</h2>
+            <h2 class="text-2xl font-semibold text-white">
+              <span v-if="isOidcMode">Sign in to your explorer</span>
+              <span v-else>Unlock your explorer</span>
+            </h2>
             <p class="mt-2 text-sm text-white/60">
-              Enter your password to resume exploring your volumes and files.
+              <span v-if="isOidcMode">
+                Continue with {{ providerName }} to access your workspaces securely.
+              </span>
+              <span v-else>Enter your password to resume exploring your volumes and files.</span>
             </p>
           </div>
 
-          <form class="space-y-6" @submit.prevent="handleLoginSubmit">
+          <div v-if="isOidcMode" class="space-y-6">
+            <p v-if="loginError" :class="helperTextClasses">{{ loginError }}</p>
+            <p v-else-if="statusError" :class="helperTextClasses">{{ statusError }}</p>
+
+            <button type="button" :class="buttonBaseClasses" :disabled="isSubmittingLogin" @click="handleOidcLogin">
+              <span v-if="isSubmittingLogin">Redirecting…</span>
+              <span v-else>Continue with {{ providerName }}</span>
+            </button>
+          </div>
+
+          <form v-else class="space-y-6" @submit.prevent="handleLoginSubmit">
             <div>
               <label for="login-password" class="block text-sm font-medium uppercase tracking-wide text-white/70">
                 Password

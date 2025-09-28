@@ -14,7 +14,12 @@ const auth = useAuthStore()
 const router = useRouter()
 
 const handleLogout = async () => {
-  await auth.logout()
+  const redirectUrl = await auth.logout()
+  if (typeof redirectUrl === 'string' && redirectUrl) {
+    window.location.href = redirectUrl
+    return
+  }
+
   router.push({ name: 'auth-login' })
 }
 

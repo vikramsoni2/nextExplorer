@@ -15,6 +15,7 @@ const setupError = ref('');
 const isSubmittingSetup = ref(false);
 
 const statusError = computed(() => auth.lastError || '');
+const isOidcMode = computed(() => auth.mode === 'oidc');
 const redirectTarget = computed(() => {
   const redirect = route.query?.redirect;
   if (typeof redirect === 'string' && redirect.trim()) {
@@ -46,6 +47,17 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => isOidcMode.value,
+  (oidcMode) => {
+    if (oidcMode && auth.hasStatus) {
+      const redirect = redirectTarget.value;
+      router.replace({ name: 'auth-login', ...(redirect ? { query: { redirect } } : {}) });
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   if (!auth.hasStatus && !auth.isLoading) {
     auth.initialize();
@@ -59,6 +71,11 @@ const resetErrors = () => {
 
 const handleSetupSubmit = async () => {
   resetErrors();
+
+  if (isOidcMode.value) {
+    setupError.value = 'Password setup is managed by your identity provider.';
+    return;
+  }
 
   if (setupPasswordValue.value.length < 6) {
     setupError.value = 'Password must be at least 6 characters long.';

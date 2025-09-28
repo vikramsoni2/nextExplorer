@@ -253,6 +253,17 @@ const logout = () => requestJson('/api/auth/logout', {
   method: 'POST',
 });
 
+const startOidcLogin = (redirect) => {
+  const params = new URLSearchParams();
+  if (typeof redirect === 'string' && redirect.trim()) {
+    params.set('redirect', redirect.trim());
+  }
+
+  const suffix = params.toString();
+  const endpoint = suffix ? `/api/auth/oidc/login?${suffix}` : '/api/auth/oidc/login';
+  return requestJson(endpoint, { method: 'GET' });
+};
+
 export {
   apiBase,
   setAuthToken,
@@ -279,4 +290,5 @@ export {
   setupPassword,
   login,
   logout,
+  startOidcLogin,
 };

@@ -6,6 +6,7 @@ import EditorLayout from '@/layouts/EditorLayout.vue'
 import AboutView from '@/views/AboutView.vue'
 import AuthSetupView from '@/views/AuthSetupView.vue'
 import AuthLoginView from '@/views/AuthLoginView.vue'
+import AuthCallbackView from '@/views/AuthCallbackView.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -60,6 +61,12 @@ const router = createRouter({
       component: AuthLoginView,
       meta: { authScreen: true },
     },
+    {
+      path: '/auth/callback',
+      name: 'auth-callback',
+      component: AuthCallbackView,
+      meta: { authScreen: true },
+    },
   ]
 })
 
@@ -99,7 +106,7 @@ router.beforeEach(async (to) => {
     }
   }
 
-  if (to.name === 'auth-setup' && !auth.requiresSetup) {
+  if (to.name === 'auth-setup' && (!auth.requiresSetup || auth.mode === 'oidc')) {
     const redirect = typeof to.query?.redirect === 'string' ? to.query.redirect : '/browse/';
     if (auth.isAuthenticated) {
       return { path: redirect };
