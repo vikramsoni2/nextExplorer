@@ -1,0 +1,34 @@
+// {
+//   "extends": "@tsconfig/node22/tsconfig.json",
+//   "compilerOptions": {
+//     "composite": true,
+//     "types": ["node"],
+//     "allowJs": false
+//   },
+//   "include": ["vite.config.ts", "vitest.config.ts", "tailwind.config.js", "postcss.config.js"]
+// }
+
+
+{
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "include": [
+    "vite.config.*",
+    "vitest.config.*",
+    "cypress.config.*",
+    "nightwatch.conf.*",
+    "playwright.config.*",
+    "eslint.config.*", 
+    "tailwind.config.js", 
+    "postcss.config.js"
+  ],
+  "compilerOptions": {
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"]
+  }
+}
+
+

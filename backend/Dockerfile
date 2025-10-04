@@ -13,6 +13,8 @@ RUN npm install
 
 COPY . .
 
+RUN npm run build
+
 RUN mkdir /uploads
 
 EXPOSE 3000

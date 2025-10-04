@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import FileIcon from '@/icons/FileIcon.vue';
@@ -7,14 +7,16 @@ import { useNavigation } from '@/composables/navigation';
 import { useSelection } from '@/composables/itemSelection';
 import { useFileStore } from '@/stores/fileStore';
 
-const props = defineProps(['item', 'view'])
+import type { ExplorerItem } from '@/stores/fileStore';
 
-const {openItem} = useNavigation()
-const {handleSelection, isSelected} = useSelection();
+const props = defineProps<{ item: ExplorerItem; view: 'grid' | 'list' | 'tab' }>();
+
+const { openItem } = useNavigation();
+const { handleSelection, isSelected } = useSelection();
 const fileStore = useFileStore();
 const { renameState } = storeToRefs(fileStore);
 
-const renameInputRef = ref(null);
+const renameInputRef = ref<HTMLInputElement | null>(null);
 const baseRenameInputClass = 'w-full rounded border border-blue-500 bg-white/90 px-1 py-0.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-zinc-700 dark:text-white dark:border-blue-300 dark:focus:ring-blue-300';
 
 const isRenaming = computed(() => fileStore.isItemBeingRenamed(props.item));
@@ -26,7 +28,7 @@ const renameDraft = computed({
     }
     return renameState.value.draft ?? '';
   },
-  set: (value) => {
+  set: (value: string) => {
     if (isRenaming.value) {
       fileStore.setRenameDraft(value);
     }
@@ -37,7 +39,7 @@ const isCut = computed(() => fileStore.cutItems.some(
   (cutItem) => cutItem.name === props.item.name && (cutItem.path || '') === (props.item.path || '')
 ));
 
-const handleClick = (event) => {
+const handleClick = (event: MouseEvent) => {
   if (isRenaming.value) return;
   handleSelection(props.item, event);
 };
@@ -47,7 +49,7 @@ const handleDblClick = () => {
   openItem(props.item);
 };
 
-const selectRenameText = (input) => {
+const selectRenameText = (input: HTMLInputElement) => {
   if (!input) return;
   const value = input.value;
   const kind = renameState.value?.kind || props.item.kind;
@@ -102,7 +104,7 @@ const cancelRename = () => {
   fileStore.cancelRename();
 };
 
-const handleRenameKeydown = async (event) => {
+const handleRenameKeydown = async (event: KeyboardEvent) => {
   if (event.key === 'Enter') {
     event.preventDefault();
     await commitRename();

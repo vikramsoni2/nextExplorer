@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import { ChevronRight16Filled } from '@vicons/fluent';
 import { useRoute } from 'vue-router';
@@ -7,18 +7,28 @@ import { useNavigation } from '@/composables/navigation';
 const { openBreadcrumb } = useNavigation();
 const route = useRoute();
 
-const paths = computed(() => {
-  if (route.params.path) {
-    const segments = route.params.path.split('/');
+interface BreadcrumbSegment {
+  name: string;
+  path: string;
+}
+
+const paths = computed<BreadcrumbSegment[]>(() => {
+  const rawPath = route.params.path;
+  const segments = typeof rawPath === 'string'
+    ? rawPath.split('/')
+    : Array.isArray(rawPath)
+      ? rawPath
+      : [];
+
+  if (segments.length > 0) {
     const start = Math.max(0, segments.length - 3);
-    return segments.slice(start).map((segment, index) => {
-      return {
-        name: segment,
-        path: segments.slice(0, start + index + 1).join('/')
-      };
-    });
+    return segments.slice(start).map((segment, index) => ({
+      name: segment,
+      path: segments.slice(0, start + index + 1).join('/'),
+    }));
   }
-  return [{ name: 'Volumes', path: ''}];
+
+  return [{ name: 'Volumes', path: '' }];
 });
 </script>
 

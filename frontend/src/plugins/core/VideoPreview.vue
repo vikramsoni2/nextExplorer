@@ -17,35 +17,27 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { isPreviewableVideo } from '@/config/media';
+import type { PreviewContext } from '@/plugins/preview/types';
 
-const props = defineProps({
-  context: {
-    type: Object,
-    required: true,
-  },
-  previewUrl: {
-    type: String,
-    default: null,
-  },
-});
+const props = defineProps<{ context: PreviewContext; previewUrl?: string | null }>();
 
-const videoRef = ref(null);
+const videoRef = ref<HTMLVideoElement | null>(null);
 
 const extension = computed(() => props.context?.extension || '');
 const previewSrc = computed(() => {
   if (!isPreviewableVideo(extension.value)) {
     return null;
   }
-  return props.previewUrl || props.context?.previewUrl || null;
+  return props.previewUrl ?? props.context?.previewUrl ?? null;
 });
 
 const posterUrl = computed(() => props.context?.item?.thumbnail || null);
 
 const videoMimeType = computed(() => {
-  const lookup = {
+  const lookup: Record<string, string> = {
     mp4: 'video/mp4',
     mov: 'video/quicktime',
     mkv: 'video/x-matroska',

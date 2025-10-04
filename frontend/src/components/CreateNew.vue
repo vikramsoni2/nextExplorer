@@ -1,38 +1,31 @@
-<script setup>
-import { ref } from 'vue'
-import {PlusIcon} from '@heroicons/vue/24/outline'
-import { useToggle, onClickOutside } from '@vueuse/core'
-import {CreateNewFolderRound, UploadFileRound, DriveFolderUploadRound} from '@vicons/material'
-
-
-
-const popuplRef  = ref(null)
-
-const [menuOpen, toggle] = useToggle()
-
-onClickOutside(
-  popuplRef,
-  () => {
-    menuOpen.value = false
-  },
-)
+<script setup lang="ts">
+import { ref } from 'vue';
+import { PlusIcon } from '@heroicons/vue/24/outline';
+import { useToggle, onClickOutside } from '@vueuse/core';
+import { CreateNewFolderRound, UploadFileRound, DriveFolderUploadRound } from '@vicons/material';
 
 import { useFileUploader } from '@/composables/fileUploader';
 import { useFileStore } from '@/stores/fileStore';
+
+const popupRef = ref<HTMLDivElement | null>(null);
+
+const [menuOpen, toggle] = useToggle(false);
+
+onClickOutside(popupRef, () => {
+  menuOpen.value = false;
+});
 
 const { openDialog } = useFileUploader();
 const fileStore = useFileStore();
 const isCreating = ref(false);
 
-const uploadFolder = async ()=>{
-  await openDialog({directory: true})
-  //process()
-}
+const uploadFolder = async () => {
+  await openDialog({ directory: true });
+};
 
-const uploadFiles = async ()=>{
-  await openDialog()
-  //process()
-}
+const uploadFiles = async () => {
+  await openDialog();
+};
 
 const createFolder = async () => {
   if (isCreating.value) return;
@@ -46,7 +39,7 @@ const createFolder = async () => {
     menuOpen.value = false;
     isCreating.value = false;
   }
-}
+};
 
 </script>
 <template>
@@ -63,7 +56,7 @@ const createFolder = async () => {
     </button>
 
     <div 
-    ref="popuplRef"
+    ref="popupRef"
     v-if="menuOpen"
     class="
     absolute top-0

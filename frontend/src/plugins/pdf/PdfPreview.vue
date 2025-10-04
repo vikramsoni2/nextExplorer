@@ -29,21 +29,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 
-const props = defineProps({
-  context: {
-    type: Object,
-    required: true,
-  },
-  previewUrl: {
-    type: String,
-    default: null,
-  },
-});
+import type { PreviewContext } from '@/plugins/preview/types';
 
-const previewSrc = computed(() => props.previewUrl || props.context?.previewUrl || null);
+const props = defineProps<{ context: PreviewContext; previewUrl?: string | null }>();
+
+const previewSrc = computed(() => props.previewUrl ?? props.context?.previewUrl ?? null);
 
 const viewerSrc = computed(() => {
   if (!previewSrc.value) return null;

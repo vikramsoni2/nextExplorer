@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "auth": {
+    "passwordHash": null,
+    "salt": null,
+    "iterations": 210000,
+    "createdAt": null
+  },
+  "favorites": []
+}

@@ -1,20 +1,20 @@
-<script setup>
-import {ServerIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
-import {getVolumes} from '@/api'
+<script setup lang="ts">
+import { ServerIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { getVolumes, type VolumeEntry } from '@/api';
 import { ref, onMounted } from 'vue';
-import {useNavigation} from '@/composables/navigation';
+import { useNavigation } from '@/composables/navigation';
 
-const {openItem} = useNavigation()
+const { openItem } = useNavigation();
 
-const volumes = ref([])
+const volumes = ref<VolumeEntry[]>([]);
 
 onMounted(async () => {
-    try {
-        volumes.value = await getVolumes()
-    } catch (error) {
-        console.error('Failed to load volumes', error)
-    }
-})
+  try {
+    volumes.value = await getVolumes();
+  } catch (error) {
+    console.error('Failed to load volumes', error);
+  }
+});
 
 const open = ref(true);
 

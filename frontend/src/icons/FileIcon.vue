@@ -1,8 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { computed, watch } from 'vue';
 
 import { apiBase, appendAuthQuery } from '@/api';
-import { useFileStore } from '@/stores/fileStore';
+import { useFileStore, type ExplorerItem } from '@/stores/fileStore';
 import { isPreviewableImage, isPreviewableVideo } from '@/config/media';
 
 import TxtIcon from './files/txt-icon.vue';
@@ -10,12 +10,7 @@ import DirectoryIcon from './files/directory-icon.vue';
 import CodeIcon from './files/code-icon.vue';
 import PdfIcon from './files/pdf-icon.vue';
 
-const props = defineProps({
-  item: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{ item: ExplorerItem }>();
 
 const fileStore = useFileStore();
 
@@ -50,7 +45,7 @@ const isPreviewable = computed(() => {
   return isPreviewableImage(kind) || isPreviewableVideo(kind);
 });
 
-const requestThumbnailIfNeeded = () => {
+const requestThumbnailIfNeeded = (): void => {
   if (!props.item || props.item.kind === 'directory') {
     return;
   }

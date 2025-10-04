@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ArrowDownTrayIcon, TrashIcon, ArrowPathIcon, PencilSquareIcon, StarIcon as StarIconOutline } from '@heroicons/vue/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid';
@@ -10,14 +10,14 @@ import ModalDialog from '@/components/ModalDialog.vue';
 const fileStore = useFileStore();
 const favoritesStore = useFavoritesStore();
 
-const selectedItems = computed(() => fileStore.selectedItems);
+const selectedItems = fileStore.selectedItems;
 const selectedItem = computed(() => selectedItems.value[0] ?? null);
 const hasSelection = computed(() => selectedItems.value.length > 0);
 const isSingleItemSelected = computed(() => selectedItems.value.length === 1);
 const isSingleFileSelected = computed(() => isSingleItemSelected.value && selectedItems.value[0]?.kind !== 'directory');
 const canRename = computed(() => isSingleItemSelected.value && selectedItems.value[0]?.kind !== 'volume');
 const isSingleDirectorySelected = computed(() => isSingleItemSelected.value && selectedItems.value[0]?.kind === 'directory');
-const currentPath = computed(() => normalizePath(fileStore.getCurrentPath || ''));
+const currentPath = computed(() => normalizePath(fileStore.getCurrentPath.value ?? ''));
 const isPreparingDownload = ref(false);
 const isMutatingFavorite = ref(false);
 const isDeleteConfirmOpen = ref(false);
@@ -49,7 +49,7 @@ onMounted(() => {
   favoritesStore.ensureLoaded();
 });
 
-const getResolvedPaths = () => selectedItems.value
+const getResolvedPaths = (): string[] => selectedItems.value
   .map((item) => {
     const parent = normalizePath(item.path || '');
     const combined = parent ? `${parent}/${item.name}` : item.name;
@@ -57,7 +57,7 @@ const getResolvedPaths = () => selectedItems.value
   })
   .filter(Boolean);
 
-const extractFilename = (contentDisposition) => {
+const extractFilename = (contentDisposition: string | null) => {
   if (!contentDisposition) return null;
 
   const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);

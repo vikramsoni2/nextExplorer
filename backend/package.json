@@ -1,26 +1,38 @@
 {
-    "name": "finder",
-    "version": "1.0.0",
-    "description": "explorer",
-    "main": "app.js",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "nodemon app.js"
-    },
-    "author": "Vikram Soni",
-    "license": "ISC",
-    "dependencies": {
-        "archiver": "^6.0.2",
-        "body-parser": "^1.20.2",
-        "cors": "^2.8.5",
-        "express": "^4.19.2",
-        "fluent-ffmpeg": "^2.1.2",
-        "multer": "^1.4.5-lts.1",
-        "node-pty": "^1.0.0",
-        "sharp": "^0.33.4",
-        "ws": "^8.17.0"
-    },
-    "devDependencies": {
-        "nodemon": "^2.0.15"
-    }
+  "name": "finder",
+  "version": "1.0.0",
+  "description": "explorer",
+  "main": "dist/app.js",
+  "types": "dist/app.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "start": "node dist/app.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "Vikram Soni",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^6.0.2",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "fluent-ffmpeg": "^2.1.2",
+    "multer": "^1.4.5-lts.1",
+    "node-pty": "^1.0.0",
+    "sharp": "^0.33.4",
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/fluent-ffmpeg": "^2.1.22",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^20.12.7",
+    "@types/ws": "^8.5.10",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
+  }
 }

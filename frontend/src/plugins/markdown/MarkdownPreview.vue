@@ -20,22 +20,18 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue';
 import DOMPurify from 'dompurify';
+import type { PreviewContext } from '@/plugins/preview/types';
 
-const props = defineProps({
-  context: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{ context: PreviewContext }>();
 
 const isLoading = ref(false);
 const renderedHtml = ref('');
 const error = ref('');
 
-let markedRenderer;
+let markedRenderer: typeof import('marked') | undefined;
 const ensureMarked = async () => {
   if (markedRenderer) return markedRenderer;
   const module = await import('marked');
@@ -57,11 +53,13 @@ const loadContent = async () => {
     const response = await props.context.api.fetchFileContent(filePath);
     const source = typeof response?.content === 'string' ? response.content : '';
     const marked = await ensureMarked();
-    const rawHtml = marked.parse(source);
+    const rawHtml = typeof marked.parse === 'function'
+      ? marked.parse(source)
+      : (marked as unknown as (input: string) => string)(source);
     renderedHtml.value = DOMPurify.sanitize(rawHtml);
   } catch (err) {
     console.error('Failed to load markdown preview', err);
-    error.value = err?.message || 'Unable to render markdown preview.';
+    error.value = err instanceof Error ? err.message : 'Unable to render markdown preview.';
     renderedHtml.value = '';
   } finally {
     isLoading.value = false;

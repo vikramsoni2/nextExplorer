@@ -1,5 +1,5 @@
-<script setup>
-import { computed, ref, watch } from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
 // import { useDropZone } from '@vueuse/core'
 import HeaderLogo from '@/components/HeaderLogo.vue';
 import FavMenu from '@/components/FavMenu.vue';
@@ -13,28 +13,32 @@ import MenuClipboard from '@/components/MenuClipboard.vue';
 import UploadProgress from '@/components/UploadProgress.vue';
 import SettingsBar from '@/components/SettingsBar.vue';
 import MenuItemInfo from '@/components/MenuItemInfo.vue';
-import { RouterView, useRoute } from 'vue-router'
-import { useTitle } from '@vueuse/core'
+import { RouterView, useRoute } from 'vue-router';
+import { useTitle } from '@vueuse/core';
 
-import MenuSortBy from '@/components/MenuSortBy.vue'
+import MenuSortBy from '@/components/MenuSortBy.vue';
 import PreviewHost from '@/plugins/preview/PreviewHost.vue';
 // import TerminalPanel from '@/components/TerminalPanel.vue';
 
 
-const route = useRoute()
+const route = useRoute();
 
 const currentPathName = computed(() => {
-  if(route.params.path==''){
+  const rawPath = route.params.path;
+  if (rawPath === '') {
     return 'Volumes';
   }
-  if (typeof route.params.path === 'string') {
-    const segments = route.params.path.split("/");
-    return segments.pop(); 
+  if (typeof rawPath === 'string') {
+    const segments = rawPath.split('/');
+    return segments.pop() || 'Volumes';
   }
-  
-})
+  if (Array.isArray(rawPath) && rawPath.length > 0) {
+    return rawPath[rawPath.length - 1];
+  }
+  return 'Volumes';
+});
 
-useTitle(currentPathName)
+useTitle(currentPathName);
 
 
 

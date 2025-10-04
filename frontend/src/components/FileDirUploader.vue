@@ -1,6 +1,6 @@
 
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 
 const fileInput = ref(null);

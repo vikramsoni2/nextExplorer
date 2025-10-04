@@ -1,5 +1,5 @@
 
-<script setup>
+<script setup lang="ts">
 import { AlignSpaceAroundVertical20Regular } from '@vicons/fluent';
 import { useSettingsStore } from '@/stores/settings'
 import {

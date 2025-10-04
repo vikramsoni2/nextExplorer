@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import { SortByAlphaOutlined } from '@vicons/material';
 import { useSettingsStore } from '@/stores/settings'
@@ -6,14 +6,14 @@ import { CheckIcon } from '@heroicons/vue/20/solid';
 import { onClickOutside } from '@vueuse/core';
 
 
-const settings = useSettingsStore()
+const settings = useSettingsStore();
 
-const menuOpen = ref(false)
-const menuPopup = ref(null)
+const menuOpen = ref(false);
+const menuPopup = ref<HTMLElement | null>(null);
 
 onClickOutside(menuPopup, () => {
-  menuOpen.value = false
-})
+  menuOpen.value = false;
+});
 
 </script>
 

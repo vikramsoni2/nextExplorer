@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {ChevronLeft16Filled, ChevronRight16Filled} from '@vicons/fluent'
 import {ArrowUp} from '@vicons/tabler'
 import { useNavigation } from '@/composables/navigation';

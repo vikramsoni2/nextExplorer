@@ -64,40 +64,41 @@
   </teleport>
 </template>
 
-<script setup>
-import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, shallowRef, watch, type Component } from 'vue';
 import { XMarkIcon } from '@heroicons/vue/20/solid';
 import { usePreviewManager } from '@/plugins/preview/manager';
+import type { PreviewAction, PreviewPlugin } from '@/plugins/preview/types';
 
 const manager = usePreviewManager();
 
-const isOpen = computed(() => manager.isOpen);
-const context = computed(() => manager.currentContext);
-const plugin = computed(() => manager.currentPlugin);
+const isOpen = computed(() => manager.isOpen.value);
+const context = computed(() => manager.currentContext.value);
+const plugin = computed(() => manager.currentPlugin.value);
 const isStandalone = computed(() => Boolean(plugin.value?.standalone));
-const availableActions = computed(() => {
+const availableActions = computed<PreviewAction[]>(() => {
   if (!plugin.value || !context.value || isStandalone.value) return [];
   const actions = plugin.value.actions?.(context.value);
   return Array.isArray(actions) ? actions : [];
 });
 
-const resolvedComponent = shallowRef(null);
+const resolvedComponent = shallowRef<Component | null>(null);
 
-const loadComponent = async (nextPlugin) => {
+const loadComponent = async (nextPlugin: PreviewPlugin | null): Promise<void> => {
   resolvedComponent.value = null;
   if (!nextPlugin) return;
   try {
     const componentFactory = nextPlugin.component;
     const result = typeof componentFactory === 'function' ? await componentFactory() : componentFactory;
     if (!result) return;
-    resolvedComponent.value = result.default || result;
+    resolvedComponent.value = (result as { default?: Component }).default ?? (result as Component);
   } catch (error) {
     console.error(`Failed to load preview component for ${nextPlugin.id}`, error);
   }
 };
 
 watch(plugin, (nextPlugin) => {
-  loadComponent(nextPlugin);
+  loadComponent(nextPlugin ?? null);
 }, { immediate: true });
 
 const handleClose = () => {
@@ -107,7 +108,7 @@ const handleClose = () => {
   manager.close();
 };
 
-const runAction = (action) => {
+const runAction = (action: PreviewAction) => {
   if (!action || !context.value) return;
   try {
     action.run?.(context.value);
@@ -116,8 +117,8 @@ const runAction = (action) => {
   }
 };
 
-const handleKeydown = (event) => {
-  if (event.key === 'Escape' && manager.isOpen) {
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && manager.isOpen.value) {
     event.preventDefault();
     handleClose();
   }

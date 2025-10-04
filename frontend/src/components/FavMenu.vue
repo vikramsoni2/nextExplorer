@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import * as OutlineIcons from '@heroicons/vue/24/outline';
 import * as SolidIcons from '@heroicons/vue/24/solid';
@@ -15,12 +15,12 @@ onMounted(() => {
   favoritesStore.ensureLoaded();
 });
 
-const ICON_VARIANTS = {
+const ICON_VARIANTS: Record<string, Record<string, unknown>> = {
   outline: OutlineIcons,
   solid: SolidIcons,
 };
 
-const resolveIconComponent = (iconName) => {
+const resolveIconComponent = (iconName: string | null | undefined) => {
   if (typeof iconName !== 'string') {
     return StarIconOutline;
   }
@@ -36,20 +36,20 @@ const resolveIconComponent = (iconName) => {
     const iconKey = iconRaw.trim();
     const registry = ICON_VARIANTS[variantKey];
     if (registry && registry[iconKey]) {
-      return registry[iconKey];
+      return registry[iconKey] as unknown;
     }
   }
 
   return OutlineIcons[trimmed] || SolidIcons[trimmed] || StarIconOutline;
 };
 
-const favorites = computed(() => favoritesStore.favorites.map((favorite) => ({
+const favorites = computed(() => favoritesStore.favorites.value.map((favorite) => ({
   ...favorite,
   label: favorite.path.split('/').pop() || favorite.path,
   iconComponent: resolveIconComponent(favorite.icon),
 })));
 
-const handleOpenFavorite = (favorite) => {
+const handleOpenFavorite = (favorite: { path?: string }) => {
   if (!favorite?.path) {
     return;
   }

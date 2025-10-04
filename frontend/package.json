@@ -3,12 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "^20.12.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "test:unit": "vitest",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
+    "lint": "eslint . --ext .vue,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "typecheck": "vue-tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.2",
@@ -33,11 +37,11 @@
     "dropzone": "^6.0.0-beta.2",
     "marked": "^12.0.2",
     "nanoid": "^5.0.7",
-    "pinia": "^2.1.7",
-    "vue": "^3.4.21",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.22",
     "vue-codemirror": "^6.1.1",
     "vue-easy-lightbox": "^1.19.0",
-    "vue-router": "^4.3.0"
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
@@ -49,7 +53,6 @@
     "@vicons/material": "^0.12.0",
     "@vicons/tabler": "^0.12.0",
     "@vicons/utils": "^0.1.4",
-    "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.5",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
@@ -58,8 +61,17 @@
     "postcss": "^8.4.38",
     "sass": "^1.77.2",
     "tailwindcss": "^3.4.3",
-    "vite": "^5.2.8",
-    "vite-plugin-vue-devtools": "^7.0.25",
-    "vitest": "^1.4.0"
+
+    "vite": "^7.1.7",
+    "vite-plugin-vue-devtools": "^8.0.2",
+    "vitest": "^1.4.0",
+    "@vue/tsconfig": "^0.8.1",
+    "@types/node": "^22.18.6",
+    "@types/dompurify": "^3.0.5",
+    "typescript": "~5.9.0",
+    "vue-tsc": "^3.1.0",
+    "@tsconfig/node22": "^22.0.2",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "npm-run-all2": "^8.0.4"
   }
 }

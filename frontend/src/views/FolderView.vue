@@ -1,32 +1,43 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/stores/settings'
+import { useSettingsStore } from '@/stores/settings';
 import FileObject from '@/components/FileObject.vue';
 import { useFileStore } from '@/stores/fileStore';
 import LoadingIcon from '@/icons/LoadingIcon.vue';
 import { useSelection } from '@/composables/itemSelection';
 
-const settings = useSettingsStore()
-const fileStore = useFileStore()
-const route = useRoute()
-const loading = ref(true)
-const selectedItems = ref([]);
+const settings = useSettingsStore();
+const fileStore = useFileStore();
+const route = useRoute();
+const loading = ref(true);
 const { clearSelection } = useSelection();
 
 const loadFiles = async () => {
-  loading.value = true
-  const path = route.params.path || ''
+  loading.value = true;
+  const rawPath = route.params.path;
+  const path = typeof rawPath === 'string'
+    ? rawPath
+    : Array.isArray(rawPath)
+      ? rawPath.join('/')
+      : '';
   try {
-    await fileStore.fetchPathItems(path)
+    await fileStore.fetchPathItems(path);
   } catch (error) {
-    console.error('Failed to load directory contents', error)
+    console.error('Failed to load directory contents', error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
-onMounted(loadFiles)
+onMounted(loadFiles);
+
+watch(
+  () => route.fullPath,
+  () => {
+    loadFiles();
+  },
+);
 
 // const toggleSelection = (item, event) => {
 //   if (event.ctrlKey || event.metaKey) {

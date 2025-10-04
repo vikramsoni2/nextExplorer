@@ -1,20 +1,18 @@
-<script setup>
-import { computed, defineProps, defineEmits } from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
 
 import { XMarkIcon } from '@heroicons/vue/20/solid';
 
-const props = defineProps({
-  modelValue: Boolean
-});
+const props = defineProps<{ modelValue: boolean }>();
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 
 const popupOpened = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
+  set: (value: boolean) => emit('update:modelValue', value),
 });
 
-function onBackgroundClick() {
+function onBackgroundClick(): void {
   if (popupOpened.value) {
     popupOpened.value = false;
   }
