@@ -5,8 +5,8 @@ import { useFileStore } from '@/stores/fileStore';
 
 const fileStore = useFileStore();
 
-const canCopyOrCut = computed(() => fileStore.hasSelection.value);
-const canPaste = computed(() => fileStore.hasClipboardItems.value);
+const canCopyOrCut = computed(() => fileStore.hasSelection);
+const canPaste = computed(() => fileStore.hasClipboardItems);
 const isCutActive = computed(() => fileStore.cutItems.length > 0);
 const isCopyActive = computed(() => fileStore.copiedItems.length > 0);
 

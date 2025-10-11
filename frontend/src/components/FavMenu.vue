@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, type Component } from 'vue';
 import * as OutlineIcons from '@heroicons/vue/24/outline';
 import * as SolidIcons from '@heroicons/vue/24/solid';
 import { useFavoritesStore } from '@/stores/favorites';
 import { useNavigation } from '@/composables/navigation';
+import type { FavoriteEntry } from '@/api';
 
 const { ChevronDownIcon, StarIcon: StarIconOutline } = OutlineIcons;
 
@@ -15,12 +16,12 @@ onMounted(() => {
   favoritesStore.ensureLoaded();
 });
 
-const ICON_VARIANTS: Record<string, Record<string, unknown>> = {
+const iconRegistry = {
   outline: OutlineIcons,
   solid: SolidIcons,
-};
+} satisfies Record<string, Record<string, Component>>;
 
-const resolveIconComponent = (iconName: string | null | undefined) => {
+const resolveIconComponent = (iconName: string | null | undefined): Component => {
   if (typeof iconName !== 'string') {
     return StarIconOutline;
   }
@@ -31,25 +32,40 @@ const resolveIconComponent = (iconName: string | null | undefined) => {
   }
 
   if (trimmed.includes(':')) {
-    const [variantRaw, iconRaw] = trimmed.split(':', 2);
-    const variantKey = variantRaw.toLowerCase();
+    const [variantRaw = '', iconRaw = ''] = trimmed.split(':', 2);
+    const variantKey = variantRaw.trim().toLowerCase();
     const iconKey = iconRaw.trim();
-    const registry = ICON_VARIANTS[variantKey];
-    if (registry && registry[iconKey]) {
-      return registry[iconKey] as unknown;
+    const registry = iconRegistry[variantKey];
+    if (registry && iconKey in registry) {
+      return registry[iconKey];
     }
   }
 
-  return OutlineIcons[trimmed] || SolidIcons[trimmed] || StarIconOutline;
+  const outlineIcon = (OutlineIcons as Record<string, Component>)[trimmed];
+  if (outlineIcon) {
+    return outlineIcon;
+  }
+
+  const solidIcon = (SolidIcons as Record<string, Component>)[trimmed];
+  if (solidIcon) {
+    return solidIcon;
+  }
+
+  return StarIconOutline;
 };
 
-const favorites = computed(() => favoritesStore.favorites.value.map((favorite) => ({
+interface FavoriteWithIcon extends FavoriteEntry {
+  label: string;
+  iconComponent: Component;
+}
+
+const favorites = computed<FavoriteWithIcon[]>(() => favoritesStore.favorites.map((favorite) => ({
   ...favorite,
   label: favorite.path.split('/').pop() || favorite.path,
   iconComponent: resolveIconComponent(favorite.icon),
 })));
 
-const handleOpenFavorite = (favorite: { path?: string }) => {
+const handleOpenFavorite = (favorite: FavoriteEntry): void => {
   if (!favorite?.path) {
     return;
   }

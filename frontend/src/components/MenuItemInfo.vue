@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { ArrowDownTrayIcon, TrashIcon, ArrowPathIcon, PencilSquareIcon, StarIcon as StarIconOutline } from '@heroicons/vue/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid';
+import { storeToRefs } from 'pinia';
 import { useFileStore } from '@/stores/fileStore';
 import { useFavoritesStore } from '@/stores/favorites';
 import { normalizePath, downloadItems } from '@/api';
@@ -10,14 +11,15 @@ import ModalDialog from '@/components/ModalDialog.vue';
 const fileStore = useFileStore();
 const favoritesStore = useFavoritesStore();
 
-const selectedItems = fileStore.selectedItems;
+const { selectedItems, getCurrentPath } = storeToRefs(fileStore);
+
 const selectedItem = computed(() => selectedItems.value[0] ?? null);
 const hasSelection = computed(() => selectedItems.value.length > 0);
 const isSingleItemSelected = computed(() => selectedItems.value.length === 1);
 const isSingleFileSelected = computed(() => isSingleItemSelected.value && selectedItems.value[0]?.kind !== 'directory');
 const canRename = computed(() => isSingleItemSelected.value && selectedItems.value[0]?.kind !== 'volume');
 const isSingleDirectorySelected = computed(() => isSingleItemSelected.value && selectedItems.value[0]?.kind === 'directory');
-const currentPath = computed(() => normalizePath(fileStore.getCurrentPath.value ?? ''));
+const currentPath = computed(() => normalizePath(getCurrentPath.value ?? ''));
 const isPreparingDownload = ref(false);
 const isMutatingFavorite = ref(false);
 const isDeleteConfirmOpen = ref(false);

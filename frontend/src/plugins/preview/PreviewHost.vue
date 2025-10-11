@@ -72,9 +72,9 @@ import type { PreviewAction, PreviewPlugin } from '@/plugins/preview/types';
 
 const manager = usePreviewManager();
 
-const isOpen = computed(() => manager.isOpen.value);
-const context = computed(() => manager.currentContext.value);
-const plugin = computed(() => manager.currentPlugin.value);
+const isOpen = computed(() => manager.isOpen);
+const context = computed(() => manager.currentContext);
+const plugin = computed(() => manager.currentPlugin);
 const isStandalone = computed(() => Boolean(plugin.value?.standalone));
 const availableActions = computed<PreviewAction[]>(() => {
   if (!plugin.value || !context.value || isStandalone.value) return [];

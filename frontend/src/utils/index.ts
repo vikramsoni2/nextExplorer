@@ -17,12 +17,12 @@ type StartViewTransition = (callback: () => void) => void;
 
 export function withViewTransition<T extends (...args: any[]) => any>(func: T) {
   return (...args: Parameters<T>): ReturnType<T> | void => {
-    const startTransition = (document as Document & { startViewTransition?: StartViewTransition }).startViewTransition;
-    if (!startTransition) {
+    const doc = document as Document & { startViewTransition?: StartViewTransition };
+    if (!doc.startViewTransition) {
       return func(...args);
     }
 
-    startTransition(() => {
+    doc.startViewTransition(() => {
       func(...args);
     });
     return undefined;

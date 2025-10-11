@@ -2,7 +2,9 @@ import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 
 import { fetchFileContent, getPreviewUrl, normalizePath, downloadItems } from '@/api';
-import router from '@/router';
+// Avoid a static import of the router to prevent a circular dependency:
+// manager -> router -> layout -> PreviewHost -> manager
+// We'll lazy-load the router inside methods that need it.
 import type {
   PreviewContext,
   PreviewItem,
@@ -72,7 +74,15 @@ export const usePreviewManager = defineStore('preview-manager', () => {
         if (!targetPath) return;
         const normalized = normalizePath(targetPath);
         if (!normalized) return;
-        router.push({ path: `/editor/${normalized}` });
+        // Lazy import to break circular dependency with the router
+        import('@/router')
+          .then((m) => {
+            const r = m.default;
+            r?.push?.({ path: `/editor/${normalized}` });
+          })
+          .catch((error) => {
+            console.error('Failed to navigate to editor', error);
+          });
       },
       closePreview: (): void => {
         managerApi.close();

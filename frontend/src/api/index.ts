@@ -180,10 +180,13 @@ export async function deleteItems(items: TransferItemPayload[]): Promise<unknown
 
 export async function createFolder(destination: string, name?: string): Promise<CreateFolderResponse> {
   const normalizedDestination = normalizePath(destination || '');
-  const payload = { path: normalizedDestination };
+  const payload: { path: string; name?: string } = { path: normalizedDestination };
 
-  if (typeof name === 'string' && name.trim()) {
-    payload.name = name;
+  if (typeof name === 'string') {
+    const trimmedName = name.trim();
+    if (trimmedName) {
+      payload.name = trimmedName;
+    }
   }
 
   return requestJson<CreateFolderResponse>('/api/files/folder', {

@@ -15,7 +15,7 @@ export function useNavigation() {
 
     const extensionFromKind = typeof item.kind === 'string' ? item.kind.toLowerCase() : '';
     const extensionFromName = typeof item.name === 'string' && item.name.includes('.')
-      ? item.name.split('.').pop().toLowerCase()
+      ? (item.name.split('.').pop() ?? '').toLowerCase()
       : '';
 
     if (item.kind === 'volume') {
