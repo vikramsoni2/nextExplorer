@@ -82,8 +82,8 @@ const isSaving = ref(false);
 const loadError = ref('');
 const saveError = ref('');
 
-const view = shallowRef(null);
-const handleReady = (payload) => {
+const view = shallowRef<unknown>(null);
+const handleReady = (payload: { view: unknown }) => {
   view.value = payload.view;
 };
 
@@ -99,7 +99,11 @@ const normalizedPath = computed(() => normalizePath(rawPathParam.value));
 const displayPath = computed(() => normalizedPath.value || '');
 const fileExtension = computed(() => {
   const segments = normalizedPath.value.split('.');
-  return segments.length > 1 ? segments.pop().toLowerCase() : '';
+  if (segments.length <= 1) {
+    return '';
+  }
+  const extension = segments.pop();
+  return extension ? extension.toLowerCase() : '';
 });
 
 const editorExtensions = computed(() => {
@@ -152,7 +156,7 @@ const loadFile = async () => {
   } catch (error) {
     console.error('Failed to load file:', error);
     if (requestId === loadRequestId) {
-      loadError.value = error?.message || 'Failed to load file.';
+      loadError.value = error instanceof Error ? error.message : 'Failed to load file.';
     }
   } finally {
     if (requestId === loadRequestId) {
@@ -178,7 +182,7 @@ const saveFile = async () => {
     closeEditor();
   } catch (error) {
     console.error('Failed to save file:', error);
-    saveError.value = error?.message || 'Failed to save file.';
+    saveError.value = error instanceof Error ? error.message : 'Failed to save file.';
   } finally {
     isSaving.value = false;
   }
@@ -198,7 +202,7 @@ const closeEditor = () => {
   router.push({ path: destination });
 };
 
-const handleKeydown = (event) => {
+const handleKeydown = (event: KeyboardEvent) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
     event.preventDefault();
     if (canSave.value) {

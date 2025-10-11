@@ -17,8 +17,10 @@ const resolveExtension = (item: PreviewItem | null | undefined): string => {
   if (item.kind && item.kind !== 'directory') {
     return String(item.kind).toLowerCase();
   }
-  if (typeof item.name === 'string' && item.name.includes('.')) {
-    return item.name.split('.').pop().toLowerCase();
+  const itemName = item.name;
+  if (typeof itemName === 'string' && itemName.includes('.')) {
+    const segment = itemName.split('.').pop();
+    return segment ? segment.toLowerCase() : '';
   }
   return '';
 };

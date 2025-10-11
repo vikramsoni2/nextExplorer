@@ -52,8 +52,8 @@ const DEFAULT_EDITOR_EXTENSIONS = [
 
 const envExtensions = (import.meta.env.VITE_EDITOR_EXTENSIONS ?? '')
   .split(',')
-  .map((value) => value.trim().toLowerCase())
-  .filter((value): value is string => Boolean(value));
+  .map((value: string) => value.trim().toLowerCase())
+  .filter((value: string): value is string => Boolean(value));
 
 const editableExtensionsSet = new Set([
   ...DEFAULT_EDITOR_EXTENSIONS,

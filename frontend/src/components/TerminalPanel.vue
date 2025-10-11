@@ -4,7 +4,6 @@
   ref="dragline" 
   class="cursor-ns-resize w-full h-[4px] -ml-[2px] bg-nextgray-400 dark:bg-neutral-700 z-100"></div>
   <div 
-  ref="resizable"
   class="overflow-hidden"
   :style="{height: `${terminalHeight}px`}">
     <div ref="terminaldiv"></div>
@@ -12,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
-import {useDraggable } from '@vueuse/core'
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { useDraggable } from '@vueuse/core';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -26,16 +25,20 @@ import { apiBase, appendAuthQuery } from '@/api';
 
 
 const terminalHeight = ref(2);
-const terminaldiv = ref(null);
-let term;
-let socket;
-let fitAddon;
+const terminaldiv = ref<HTMLDivElement | null>(null);
+const dragline = ref<HTMLElement | null>(null);
 
-const sendInput = (data) => {
-  socket.send(data);
+let term: Terminal | null = null;
+let socket: WebSocket | null = null;
+let fitAddon: FitAddon | null = null;
+
+const sendInput = (data: string) => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(data);
+  }
 };
 
-const toWebSocketScheme = (url) => {
+const toWebSocketScheme = (url: string): string => {
   if (url.startsWith('https://')) {
     return `wss://${url.slice(8)}`;
   }
@@ -47,16 +50,16 @@ const toWebSocketScheme = (url) => {
   return url;
 };
 
-const buildTerminalUrl = () => {
+const buildTerminalUrl = (): string => {
   const base = `${apiBase}/terminal`;
   const withScheme = toWebSocketScheme(base);
   return appendAuthQuery(withScheme);
 };
 
-const connectToBackend = () => {
+const connectToBackend = (): void => {
   socket = new WebSocket(buildTerminalUrl());
-  socket.onmessage = event => {
-    term.write(event.data);
+  socket.onmessage = (event: MessageEvent<string>) => {
+    term?.write(event.data);
   };
 };
 
@@ -64,11 +67,16 @@ onMounted(() => {
   term = new Terminal();
   fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
-  term.open(terminaldiv.value);
+
+  const host = terminaldiv.value;
+  if (!host) {
+    return;
+  }
+
+  term.open(host);
   fitAddon.fit();
 
-
-  term.onData(data => {
+  term.onData((data: string) => {
     sendInput(data);
   });
 
@@ -76,33 +84,28 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (socket) {
-    socket.close();
-  }
+  socket?.close();
+  socket = null;
+  term?.dispose();
+  term = null;
+  fitAddon = null;
 });
 
 
 
 
 
-
-
-const dragline = ref(null)
-const resizable = ref(null)
-
 useDraggable(dragline, {
   axis: 'y',
   preventDefault: true,
-  onMove: (event, { movementY }) => {
+  onMove: (_position, event) => {
+    const movementY = event.movementY ?? 0;
     terminalHeight.value -= movementY;
     terminalHeight.value = Math.max(2, Math.min(400, terminalHeight.value));
 
     const xtermScreen = document.querySelector('.xterm-screen');
-    if (xtermScreen) {
+    if (xtermScreen instanceof HTMLElement) {
       xtermScreen.style.height = `${terminalHeight.value}px !important`;
-    }
-    else {
-      console.log('xterm-screen not found');
     }
   },
 });
@@ -117,4 +120,3 @@ useDraggable(dragline, {
 }
 
 </style>
-

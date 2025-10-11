@@ -3,6 +3,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { isEditableExtension } from '@/config/editor';
 import { usePreviewManager } from '@/plugins/preview/manager';
 import type { ExplorerItem } from '@/stores/fileStore';
+import type { VolumeEntry } from '@/api';
 import { withViewTransition } from '@/utils';
 
 export function useNavigation() {
@@ -10,7 +11,9 @@ export function useNavigation() {
   const route = useRoute();
   const previewManager = usePreviewManager();
 
-  const openItem = withViewTransition((item: ExplorerItem | null) => {
+  type NavigableItem = ExplorerItem | VolumeEntry | null;
+
+  const openItem = withViewTransition((item: NavigableItem) => {
     if (!item) return;
 
     const extensionFromKind = typeof item.kind === 'string' ? item.kind.toLowerCase() : '';

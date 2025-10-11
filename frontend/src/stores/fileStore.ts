@@ -18,6 +18,8 @@ import {
 } from '@/api';
 import { useSettingsStore } from '@/stores/settings';
 
+type SortKey = 'name' | 'size' | 'dateModified';
+
 export interface ExplorerItem extends FileItem {}
 
 export interface RenameState {
@@ -260,20 +262,53 @@ export const useFileStore = defineStore('fileStore', () => {
   const getCurrentPath = computed(() => currentPath.value);
 
   // get sorted currentPathItems
+  const toTimestamp = (value: ExplorerItem['dateModified']): number => {
+    if (value instanceof Date) {
+      return value.getTime();
+    }
+
+    if (typeof value === 'number') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return 0;
+  };
+
+  const compareBySort = (a: ExplorerItem, b: ExplorerItem, key: SortKey): number => {
+    if (key === 'name') {
+      return a.name.localeCompare(b.name);
+    }
+
+    if (key === 'size') {
+      const sizeDiff = (a.size ?? 0) - (b.size ?? 0);
+      if (sizeDiff === 0) return 0;
+      return sizeDiff > 0 ? 1 : -1;
+    }
+
+    const timeDiff = toTimestamp(a.dateModified) - toTimestamp(b.dateModified);
+    if (timeDiff === 0) return 0;
+    return timeDiff > 0 ? 1 : -1;
+  };
+
   const getCurrentPathItems = computed<ExplorerItem[]>(() => {
     const settings = useSettingsStore();
-    const direction = settings.sortBy.order === 'asc' ? 1 : -1;
+    const direction: 1 | -1 = settings.sortBy.order === 'asc' ? 1 : -1;
 
     return [...currentPathItems.value].sort((a, b) => {
       if (a.kind === 'directory' && b.kind !== 'directory') return -1;
       if (a.kind !== 'directory' && b.kind === 'directory') return 1;
-      const sortKey = settings.sortBy.by as keyof ExplorerItem;
-      const aValue = a[sortKey];
-      const bValue = b[sortKey];
-      if (aValue === bValue) return 0;
-      if (aValue == null) return 1;
-      if (bValue == null) return -1;
-      return aValue > bValue ? direction : -direction;
+
+      const comparison = compareBySort(a, b, settings.sortBy.by);
+      if (comparison === 0) {
+        return a.name.localeCompare(b.name) * direction;
+      }
+
+      return comparison * direction;
     });
   });
 

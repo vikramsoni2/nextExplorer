@@ -20,6 +20,8 @@ const SORT_OPTIONS: SortOption[] = [
   { key: 6, name: 'New to old', by: 'dateModified', order: 'desc' },
 ];
 
+const FALLBACK_SORT_OPTION: SortOption = SORT_OPTIONS[0]!;
+
 export const useSettingsStore = defineStore('settings', () => {
   const view = useStorage<ViewMode>('settings:view', 'grid');
   const gridView = (): void => { view.value = 'grid'; };
@@ -32,13 +34,11 @@ export const useSettingsStore = defineStore('settings', () => {
   const toggleDark = useToggle(isDark);
 
   const sortOptions = ref<SortOption[]>([...SORT_OPTIONS]);
-  const sortBy = ref<SortOption>(sortOptions.value[0]);
+  const sortBy = ref<SortOption>(sortOptions.value[0] ?? FALLBACK_SORT_OPTION);
 
   const setSortBy = (key: number): void => {
-    const option = sortOptions.value.find((entry) => entry.key === key);
-    if (option) {
-      sortBy.value = option;
-    }
+    const option = sortOptions.value.find((entry) => entry.key === key) ?? FALLBACK_SORT_OPTION;
+    sortBy.value = option;
   };
 
   return {

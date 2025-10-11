@@ -15,8 +15,8 @@ const DEFAULT_IMAGE_PREVIEW_EXTENSIONS = [
 
 const envImageExtensions = (import.meta.env.VITE_IMAGE_PREVIEW_EXTENSIONS ?? '')
   .split(',')
-  .map((value) => value.trim().toLowerCase())
-  .filter((value): value is string => Boolean(value));
+  .map((value: string) => value.trim().toLowerCase())
+  .filter((value: string): value is string => Boolean(value));
 
 const imagePreviewExtensionsSet = new Set([
   ...DEFAULT_IMAGE_PREVIEW_EXTENSIONS,
@@ -38,8 +38,8 @@ const DEFAULT_VIDEO_PREVIEW_EXTENSIONS = [
 
 const envVideoExtensions = (import.meta.env.VITE_VIDEO_PREVIEW_EXTENSIONS ?? '')
   .split(',')
-  .map((value) => value.trim().toLowerCase())
-  .filter((value): value is string => Boolean(value));
+  .map((value: string) => value.trim().toLowerCase())
+  .filter((value: string): value is string => Boolean(value));
 
 const videoPreviewExtensionsSet = new Set([
   ...DEFAULT_VIDEO_PREVIEW_EXTENSIONS,

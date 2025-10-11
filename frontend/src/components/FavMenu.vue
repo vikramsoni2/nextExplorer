@@ -16,10 +16,16 @@ onMounted(() => {
   favoritesStore.ensureLoaded();
 });
 
-const iconRegistry = {
+const ICON_VARIANTS = ['outline', 'solid'] as const;
+type IconVariant = typeof ICON_VARIANTS[number];
+
+const iconRegistry: Record<IconVariant, Record<string, Component>> = {
   outline: OutlineIcons,
   solid: SolidIcons,
-} satisfies Record<string, Record<string, Component>>;
+};
+
+const isVariant = (value: string): value is IconVariant => (ICON_VARIANTS as readonly string[])
+  .includes(value);
 
 const resolveIconComponent = (iconName: string | null | undefined): Component => {
   if (typeof iconName !== 'string') {
@@ -35,9 +41,12 @@ const resolveIconComponent = (iconName: string | null | undefined): Component =>
     const [variantRaw = '', iconRaw = ''] = trimmed.split(':', 2);
     const variantKey = variantRaw.trim().toLowerCase();
     const iconKey = iconRaw.trim();
-    const registry = iconRegistry[variantKey];
-    if (registry && iconKey in registry) {
-      return registry[iconKey];
+    if (isVariant(variantKey)) {
+      const registry = iconRegistry[variantKey];
+      const candidate = registry[iconKey];
+      if (candidate) {
+        return candidate;
+      }
     }
   }
 

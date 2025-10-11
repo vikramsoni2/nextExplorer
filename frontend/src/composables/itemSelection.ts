@@ -46,12 +46,15 @@ export function useSelection() {
     const startIndex = currentItems.findIndex((entry) => getItemKey(entry) === anchorKey);
 
     if (startIndex === -1) {
-      fileStore.selectedItems = [currentItems[endIndex]];
+      const target = currentItems[endIndex];
+      if (target) {
+        fileStore.selectedItems = [target];
+      }
       return;
     }
 
     const [start, end] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
-    fileStore.selectedItems = currentItems.slice(start, end + 1);
+    fileStore.selectedItems = currentItems.slice(start, end + 1).filter((entry): entry is ExplorerItem => Boolean(entry));
   };
 
   const clearSelection = (): void => {

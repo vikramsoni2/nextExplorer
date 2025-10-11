@@ -66,19 +66,25 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, shallowRef, watch, type Component } from 'vue';
+import { storeToRefs } from 'pinia';
 import { XMarkIcon } from '@heroicons/vue/20/solid';
 import { usePreviewManager } from '@/plugins/preview/manager';
 import type { PreviewAction, PreviewPlugin } from '@/plugins/preview/types';
 
 const manager = usePreviewManager();
-
-const isOpen = computed(() => manager.isOpen);
-const context = computed(() => manager.currentContext);
-const plugin = computed(() => manager.currentPlugin);
+const { isOpen, currentContext, currentPlugin } = storeToRefs(manager);
+const context = computed(() => currentContext.value);
+const plugin = computed(() => currentPlugin.value);
 const isStandalone = computed(() => Boolean(plugin.value?.standalone));
 const availableActions = computed<PreviewAction[]>(() => {
-  if (!plugin.value || !context.value || isStandalone.value) return [];
-  const actions = plugin.value.actions?.(context.value);
+  const activePlugin = plugin.value;
+  const activeContext = context.value;
+
+  if (!activePlugin || !activeContext || isStandalone.value) {
+    return [];
+  }
+
+  const actions = activePlugin.actions?.(activeContext);
   return Array.isArray(actions) ? actions : [];
 });
 
@@ -118,7 +124,7 @@ const runAction = (action: PreviewAction) => {
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && manager.isOpen.value) {
+  if (event.key === 'Escape' && isOpen.value) {
     event.preventDefault();
     handleClose();
   }

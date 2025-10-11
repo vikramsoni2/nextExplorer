@@ -8,8 +8,8 @@
     </div>
     <iframe
       v-else
-      :key="viewerSrc"
-      :src="viewerSrc"
+      :key="viewerSrc ?? 'pdf-viewer'"
+      :src="viewerSrc ?? undefined"
       class="h-full w-full grow border-0 bg-white"
       title="PDF preview"
     />
@@ -39,7 +39,7 @@ const props = defineProps<{ context: PreviewContext; previewUrl?: string | null 
 const previewSrc = computed(() => props.previewUrl ?? props.context?.previewUrl ?? null);
 
 const viewerSrc = computed(() => {
-  if (!previewSrc.value) return null;
+  if (!previewSrc.value) return undefined;
   // Hide unnecessary chrome in most PDF viewers (best effort).
   const hasHash = previewSrc.value.includes('#');
   const suffix = '#toolbar=0&navpanes=0&statusbar=0';

@@ -92,7 +92,7 @@ const commitRename = async () => {
     await fileStore.applyRename();
   } catch (error) {
     console.error('Rename operation failed', error);
-    if (error && error.message) {
+    if (error instanceof Error && error.message) {
       window.alert(error.message);
     }
     focusRenameInput();

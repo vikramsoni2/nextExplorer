@@ -1,10 +1,10 @@
 {
   "version": 2,
   "auth": {
-    "passwordHash": null,
-    "salt": null,
+    "passwordHash": "01b2cd2a4c25c8c34ad0202545b4ce5b87d8bc0a574f72e669591521eaa8b5caabfb0911670262c96e45f60e712e00647ad54b10c37538a0c299bdb67ff64619",
+    "salt": "7f543875c1a9975561a328f7b3061b96",
     "iterations": 210000,
-    "createdAt": null
+    "createdAt": "2025-10-11T17:21:13.225Z"
   },
   "favorites": []
 }

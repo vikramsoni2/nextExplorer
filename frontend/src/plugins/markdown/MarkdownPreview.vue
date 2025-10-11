@@ -25,17 +25,20 @@ import { ref, watch } from 'vue';
 import DOMPurify from 'dompurify';
 import type { PreviewContext } from '@/plugins/preview/types';
 
+type MarkedFunction = typeof import('marked')['marked'];
+
 const props = defineProps<{ context: PreviewContext }>();
 
 const isLoading = ref(false);
 const renderedHtml = ref('');
 const error = ref('');
 
-let markedRenderer: typeof import('marked') | undefined;
-const ensureMarked = async () => {
-  if (markedRenderer) return markedRenderer;
-  const module = await import('marked');
-  markedRenderer = module.marked || module.default || module;
+let markedRenderer: MarkedFunction | null = null;
+const ensureMarked = async (): Promise<MarkedFunction> => {
+  if (!markedRenderer) {
+    const module = await import('marked');
+    markedRenderer = module.marked;
+  }
   return markedRenderer;
 };
 
@@ -53,9 +56,7 @@ const loadContent = async () => {
     const response = await props.context.api.fetchFileContent(filePath);
     const source = typeof response?.content === 'string' ? response.content : '';
     const marked = await ensureMarked();
-    const rawHtml = typeof marked.parse === 'function'
-      ? marked.parse(source)
-      : (marked as unknown as (input: string) => string)(source);
+    const rawHtml = await marked.parse(source);
     renderedHtml.value = DOMPurify.sanitize(rawHtml);
   } catch (err) {
     console.error('Failed to load markdown preview', err);

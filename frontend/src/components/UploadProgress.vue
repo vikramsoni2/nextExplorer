@@ -2,34 +2,47 @@
 import { ref, computed } from 'vue'
 import { useToggle } from '@vueuse/core'
 import { PauseIcon, PlayIcon, XMarkIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
-import { useUppyStore } from '@/stores/uppyStore'
+import { useUppyStore, type UppyClientState } from '@/stores/uppyStore'
 import { formatBytes } from '@/utils'
 
 const uppyStore = useUppyStore()
 const [detailsOpen, toggleDetails] = useToggle(false)
 const isPaused = ref(false)
 
-const filesById = computed(() => {
-  const files = uppyStore.state.files ?? {}
-  if (Array.isArray(files)) {
-    return files.reduce((acc, group) => {
-      if (group && typeof group === 'object') Object.assign(acc, group)
-      return acc
-    }, {})
-  }
-  return files
-})
+type UploadFileRecord = UppyClientState['files']
+type UploadFileEntry = UploadFileRecord[string]
 
-const filesWithProgress = computed(() => {
+interface FileWithProgress extends UploadFileEntry {
+  _progress: {
+    bytesTotal: number
+    bytesUploaded: number
+    percentage: number
+    uploadComplete: boolean
+    startedAt: number
+    indeterminate: boolean
+  }
+}
+
+const filesById = computed<UploadFileRecord>(() => uppyStore.state.files)
+
+const filesWithProgress = computed<FileWithProgress[]>(() => {
   return Object.values(filesById.value)
+    .filter((file): file is UploadFileEntry => Boolean(file))
     .map((file) => {
-      const progress = file?.progress ?? {}
-      const bytesTotal = progress.bytesTotal ?? file?.size ?? 0
-      const uploadedRaw = progress.uploadComplete ? bytesTotal : progress.bytesUploaded ?? 0
+      const progress = file.progress ?? {}
+      const bytesTotal = typeof progress.bytesTotal === 'number'
+        ? progress.bytesTotal
+        : file.size ?? 0
+      const measuredUploaded = typeof progress.bytesUploaded === 'number'
+        ? progress.bytesUploaded
+        : 0
+      const uploadedRaw = progress.uploadComplete ? bytesTotal : measuredUploaded
       const bytesUploaded = Math.min(uploadedRaw, bytesTotal)
       const percentage = progress.uploadComplete
         ? 100
-        : Math.round(progress.percentage ?? (bytesTotal > 0 ? (bytesUploaded / bytesTotal) * 100 : 0))
+        : Math.round(
+          progress.percentage ?? (bytesTotal > 0 ? (bytesUploaded / bytesTotal) * 100 : 0),
+        )
 
       return {
         ...file,
@@ -80,20 +93,20 @@ const uploadedBytes = computed(() => fileStats.value.uploadedBytes)
 // Controls
 function onTogglePause() {
   if (isPaused.value) {
-    uppyStore.uppy.resumeAll?.()
+    uppyStore.uppy?.resumeAll?.()
     isPaused.value = false
   } else {
-    uppyStore.uppy.pauseAll?.()
+    uppyStore.uppy?.pauseAll?.()
     isPaused.value = true
   }
 }
 
 function onCancelAll() {
-  uppyStore.uppy.cancelAll?.({ reason: 'user' })
+  uppyStore.uppy?.cancelAll?.()
 }
 
 // Keyboard access for details chevron
-function toggleDetailsKey(e) {
+function toggleDetailsKey(e: KeyboardEvent) {
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault()
     toggleDetails()
@@ -195,7 +208,7 @@ function toggleDetailsKey(e) {
         <div class="flex items-start gap-3">
           <!-- File badge -->
           <div class="mt-0.5 h-6 w-6 flex-shrink-0 grid place-items-center rounded-md bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 uppercase text-[10px] font-semibold">
-            {{ (file.extension || file.type || 'file').toString().split('/').pop().slice(0,3) }}
+            {{ ((file.extension ?? file.type ?? 'file').toString().split('/').pop() ?? '').slice(0, 3) }}
           </div>
 
           <!-- Name + per-file stats -->

@@ -13,28 +13,15 @@ interface DialogOptions {
   directory?: boolean;
 }
 
-interface UppyFileInput {
-  name: string;
-  type: string;
-  data: File;
-  meta: {
-    relativePath: string;
-  };
-}
-
 export function useFileUploader() {
   const disallowedFiles = ['.DS_Store', 'thumbs.db'];
   const uppyStore = useUppyStore();
   const fileStore = useFileStore();
   const authStore = useAuthStore();
   const inputRef = ref<HTMLInputElement | null>(null);
-  const files = ref<UppyFileInput[]>([]);
-
   const uppy = new Uppy({
     debug: true,
     autoProceed: true,
-    // Pinia store implements the methods Uppy expects; cast to satisfy typings.
-    store: uppyStore as unknown,
   });
 
 
@@ -43,7 +30,6 @@ export function useFileUploader() {
     formData: true,
     fieldName: 'filedata',
     bundle: false,
-    allowedMetaFields: null
   });
 
   const applyAuthHeaders = (token: string | null): void => {
@@ -65,23 +51,25 @@ export function useFileUploader() {
     { immediate: true },
   );
 
+  const resolveRelativePath = (file: File): string => {
+    const candidate = (file as File & { webkitRelativePath?: string }).webkitRelativePath;
+    return candidate && candidate.trim() ? candidate : file.name;
+  };
+
   uppy.on('file-added', (file) => {
-    uppy.setFileMeta(file.id, {
+    const payload = {
       uploadTo: normalizePath(fileStore.currentPath || ''),
-    });
+      relativePath: resolveRelativePath(file.data as File),
+    };
+    uppy.setFileMeta(file.id, payload);
+  });
+
+  uppy.on('state-update', (_prev, next) => {
+    uppyStore.setState(next);
   });
 
   uppy.on('upload-success', () => {
     fileStore.fetchPathItems(fileStore.currentPath);
-  });
-
-  const toUppyFile = (file: File): UppyFileInput => ({
-    name: file.name,
-    type: file.type,
-    data: file,
-    meta: {
-      relativePath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
-    },
   });
 
   const setDialogAttributes = (options: DialogOptions): void => {
@@ -103,7 +91,6 @@ export function useFileUploader() {
     return new Promise((resolve) => {
       if (!inputRef.value) return;
 
-      files.value = [];
       const options: DialogOptions = { ...defaultDialogOptions, ...opts };
 
       setDialogAttributes(options);
@@ -114,8 +101,9 @@ export function useFileUploader() {
           (file) => !disallowedFiles.includes(file.name),
         );
 
-        files.value = selectedFiles.map((file) => toUppyFile(file));
-        files.value.forEach((file) => uppy.addFile(file as unknown));
+        selectedFiles.forEach((file) => {
+          uppy.addFile(file);
+        });
 
         if (target) {
           target.value = '';
@@ -168,13 +156,12 @@ export function useFileUploader() {
 
   onBeforeUnmount(() => {
     inputRef.value?.remove();
-    uppy.close();
+    uppy.cancelAll();
   });
 
   uppyStore.uppy = uppy;
 
   return {
-    files,
     openDialog,
   } as const;
 }
