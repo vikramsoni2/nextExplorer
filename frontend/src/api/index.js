@@ -1,18 +1,38 @@
+/**
+ * @typedef {import('@/types').FileItem} FileItem
+ */
+
 const DEFAULT_API_BASE = '/';
 const apiBase = (import.meta.env.VITE_API_URL || DEFAULT_API_BASE).replace(/\/$/, '');
 
 let authToken = null;
 
+/**
+ * Update the stored auth token used by subsequent API requests.
+ * @param {string | null | undefined} token
+ */
 const setAuthToken = (token) => {
   authToken = token || null;
 };
 
+/**
+ * Returns the currently cached auth token.
+ * @returns {string | null}
+ */
 const getAuthToken = () => authToken;
 
+/**
+ * Clears any stored auth token from memory.
+ */
 const clearAuthToken = () => {
   authToken = null;
 };
 
+/**
+ * URL-safe encode a file-system style path.
+ * @param {string} [relativePath='']
+ * @returns {string}
+ */
 const encodePath = (relativePath = '') => {
   if (!relativePath) return '';
   return relativePath
@@ -22,6 +42,11 @@ const encodePath = (relativePath = '') => {
     .join('/');
 };
 
+/**
+ * Normalizes a path by trimming duplicate slashes and leading/trailing separators.
+ * @param {string} [relativePath='']
+ * @returns {string}
+ */
 const normalizePath = (relativePath = '') => {
   if (!relativePath) {
     return '';
@@ -31,8 +56,18 @@ const normalizePath = (relativePath = '') => {
   return trimmed;
 };
 
+/**
+ * Build a fully qualified URL for a backend endpoint.
+ * @param {string} endpoint
+ * @returns {string}
+ */
 const buildUrl = (endpoint) => `${apiBase}${endpoint}`;
 
+/**
+ * Adds an Authorization header when a token is available.
+ * @param {HeadersInit} [headers={}]
+ * @returns {HeadersInit}
+ */
 const applyAuthHeader = (headers = {}) => {
   if (!authToken) {
     return headers;
@@ -44,6 +79,11 @@ const applyAuthHeader = (headers = {}) => {
   };
 };
 
+/**
+ * Appends the auth token as a query parameter when set.
+ * @param {string} url
+ * @returns {string}
+ */
 const appendAuthQuery = (url) => {
   if (!authToken) {
     return url;
@@ -53,6 +93,13 @@ const appendAuthQuery = (url) => {
   return `${url}${separator}token=${encodeURIComponent(authToken)}`;
 };
 
+/**
+ * Perform a JSON request to the backend API.
+ * @template T
+ * @param {string} endpoint
+ * @param {RequestInit & { method?: string }} [options={}]
+ * @returns {Promise<T>}
+ */
 const requestJson = async (endpoint, options = {}) => {
   const method = (options.method || 'GET').toUpperCase();
   const headers = {
@@ -91,6 +138,11 @@ const requestJson = async (endpoint, options = {}) => {
   return response.json();
 };
 
+/**
+ * Browse a directory path and return its entries.
+ * @param {string} [path='']
+ * @returns {Promise<FileItem[]>}
+ */
 async function browse(path = '') {
   const normalizedPath = normalizePath(path);
   const encodedPath = encodePath(normalizedPath);
@@ -98,10 +150,20 @@ async function browse(path = '') {
   return requestJson(endpoint, { method: 'GET' });
 }
 
+/**
+ * Retrieve the list of available volumes or root entries.
+ * @returns {Promise<FileItem[]>}
+ */
 async function getVolumes() {
   return requestJson('/api/volumes', { method: 'GET' });
 }
 
+/**
+ * Copy a list of items into a destination.
+ * @param {Array<Pick<FileItem, 'name' | 'path' | 'kind'>>} items
+ * @param {string} destination
+ * @returns {Promise<unknown>}
+ */
 async function copyItems(items, destination) {
   return requestJson('/api/files/copy', {
     method: 'POST',
@@ -109,6 +171,12 @@ async function copyItems(items, destination) {
   });
 }
 
+/**
+ * Move a list of items into a destination.
+ * @param {Array<Pick<FileItem, 'name' | 'path' | 'kind'>>} items
+ * @param {string} destination
+ * @returns {Promise<unknown>}
+ */
 async function moveItems(items, destination) {
   return requestJson('/api/files/move', {
     method: 'POST',
@@ -116,6 +184,11 @@ async function moveItems(items, destination) {
   });
 }
 
+/**
+ * Delete a batch of items.
+ * @param {Array<Pick<FileItem, 'name' | 'path' | 'kind'>>} items
+ * @returns {Promise<unknown>}
+ */
 async function deleteItems(items) {
   return requestJson('/api/files', {
     method: 'DELETE',
@@ -123,6 +196,12 @@ async function deleteItems(items) {
   });
 }
 
+/**
+ * Create a folder at the given destination.
+ * @param {string} destination
+ * @param {string} [name]
+ * @returns {Promise<{ item?: FileItem }>}
+ */
 async function createFolder(destination, name) {
   const normalizedDestination = normalizePath(destination || '');
   const payload = { path: normalizedDestination };
@@ -137,6 +216,13 @@ async function createFolder(destination, name) {
   });
 }
 
+/**
+ * Rename an existing item inside a directory.
+ * @param {string} path
+ * @param {string} name
+ * @param {string} newName
+ * @returns {Promise<{ item?: FileItem }>}
+ */
 async function renameItem(path, name, newName) {
   const normalizedPath = normalizePath(path || '');
   return requestJson('/api/files/rename', {
@@ -149,10 +235,20 @@ async function renameItem(path, name, newName) {
   });
 }
 
+/**
+ * Fetch the current user's favorite locations.
+ * @returns {Promise<FileItem[]>}
+ */
 async function fetchFavorites() {
   return requestJson('/api/favorites', { method: 'GET' });
 }
 
+/**
+ * Add a directory or file to the favorites list.
+ * @param {string} path
+ * @param {string} icon
+ * @returns {Promise<unknown>}
+ */
 async function addFavorite(path, icon) {
   const normalizedPath = normalizePath(path || '');
   return requestJson('/api/favorites', {
@@ -164,6 +260,11 @@ async function addFavorite(path, icon) {
   });
 }
 
+/**
+ * Remove an item from the favorites list.
+ * @param {string} path
+ * @returns {Promise<unknown>}
+ */
 async function removeFavorite(path) {
   const normalizedPath = normalizePath(path || '');
   return requestJson('/api/favorites', {
@@ -174,6 +275,11 @@ async function removeFavorite(path) {
   });
 }
 
+/**
+ * Request the raw contents of a file for the editor.
+ * @param {string} path
+ * @returns {Promise<{ content: string }>}
+ */
 async function fetchFileContent(path) {
   return requestJson('/api/editor', {
     method: 'POST',
@@ -181,6 +287,12 @@ async function fetchFileContent(path) {
   });
 }
 
+/**
+ * Persist modified file content back to the server.
+ * @param {string} path
+ * @param {string} content
+ * @returns {Promise<unknown>}
+ */
 async function saveFileContent(path, content) {
   return requestJson('/api/editor', {
     method: 'PUT',
@@ -188,6 +300,11 @@ async function saveFileContent(path, content) {
   });
 }
 
+/**
+ * Retrieve or generate a thumbnail for a file.
+ * @param {string} relativePath
+ * @returns {Promise<{ thumbnail: string } | null>}
+ */
 async function fetchThumbnail(relativePath) {
   const normalizedPath = normalizePath(relativePath);
   if (!normalizedPath) {

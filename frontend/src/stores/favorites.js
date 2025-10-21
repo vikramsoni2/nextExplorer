@@ -2,15 +2,27 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { normalizePath, fetchFavorites, addFavorite as addFavoriteRequest, removeFavorite as removeFavoriteRequest } from '@/api';
 
+/**
+ * @typedef {import('@/types').FavoriteEntry} FavoriteEntry
+ */
+
 export const useFavoritesStore = defineStore('favorites', () => {
+  /** @type {import('vue').Ref<FavoriteEntry[]>} */
   const favorites = ref([]);
+  /** @type {import('vue').Ref<boolean>} */
   const isLoading = ref(false);
+  /** @type {import('vue').Ref<boolean>} */
   const hasLoaded = ref(false);
+  /** @type {import('vue').Ref<string | Error | null>} */
   const lastError = ref(null);
 
   const favoritePaths = computed(() => favorites.value.map((favorite) => favorite.path));
   const favoriteSet = computed(() => new Set(favoritePaths.value));
 
+  /**
+   * Fetch favorites from the backend.
+   * @returns {Promise<void>}
+   */
   const loadFavorites = async () => {
     if (isLoading.value) return;
     isLoading.value = true;
@@ -19,7 +31,7 @@ export const useFavoritesStore = defineStore('favorites', () => {
       const response = await fetchFavorites();
       favorites.value = Array.isArray(response) ? response : [];
     } catch (error) {
-      lastError.value = error;
+      lastError.value = error instanceof Error ? error : new Error('Failed to load favorites.');
       favorites.value = [];
     } finally {
       isLoading.value = false;
@@ -27,6 +39,10 @@ export const useFavoritesStore = defineStore('favorites', () => {
     }
   };
 
+  /**
+   * Ensure favorites are loaded at least once.
+   * @returns {Promise<void>}
+   */
   const ensureLoaded = async () => {
     if (hasLoaded.value || isLoading.value) {
       return;
@@ -34,6 +50,11 @@ export const useFavoritesStore = defineStore('favorites', () => {
     await loadFavorites();
   };
 
+  /**
+   * Determine if a given path is already a favorite.
+   * @param {string} path
+   * @returns {boolean}
+   */
   const isFavorite = (path) => {
     const normalizedPath = normalizePath(path || '');
     if (!normalizedPath) {
@@ -42,16 +63,21 @@ export const useFavoritesStore = defineStore('favorites', () => {
     return favoriteSet.value.has(normalizedPath);
   };
 
+  /**
+   * Add or update a favorite entry.
+   * @param {{ path: string, icon?: string }} payload
+   * @returns {Promise<FavoriteEntry>}
+   */
   const addFavorite = async ({ path, icon }) => {
     const normalizedPath = normalizePath(path || '');
     if (!normalizedPath) {
       throw new Error('A valid path is required to add a favorite.');
     }
 
-    const payload = await addFavoriteRequest(normalizedPath, icon);
+    const response = await addFavoriteRequest(normalizedPath, icon);
     const favorite = {
-      path: payload?.path || normalizedPath,
-      icon: payload?.icon || icon || 'solid:StarIcon',
+      path: response?.path || normalizedPath,
+      icon: response?.icon || icon || 'solid:StarIcon',
     };
 
     const currentIndex = favorites.value.findIndex((entry) => entry.path === favorite.path);
@@ -66,6 +92,11 @@ export const useFavoritesStore = defineStore('favorites', () => {
     return favorite;
   };
 
+  /**
+   * Remove a favorite entry.
+   * @param {string} path
+   * @returns {Promise<string>}
+   */
   const removeFavorite = async (path) => {
     const normalizedPath = normalizePath(path || '');
     if (!normalizedPath) {

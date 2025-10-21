@@ -10,6 +10,29 @@ import "codemirror/theme/material.css";
 import "codemirror/addon/lint/lint";
 import "codemirror/addon/lint/lint.css";
 
+/**
+ * @typedef {import('vue').Ref<HTMLTextAreaElement | null>} TextareaRef
+ * @typedef {import('codemirror').EditorFromTextArea} CodeMirrorEditor
+ * @typedef {import('codemirror').EditorConfiguration} EditorConfiguration
+ */
+
+/**
+ * Lightweight wrapper around CodeMirror that keeps Vue reactivity in sync.
+ * @param {{
+ *  emit: (event: 'change', payload: { value: string }) => void,
+ *  initialValue?: string,
+ *  options?: EditorConfiguration | import('vue').Ref<EditorConfiguration>,
+ *  textareaRef: TextareaRef
+ * }} params
+ * @returns {{
+ *  dirty: import('vue').Ref<boolean>,
+ *  generation: import('vue').Ref<number | null>,
+ *  editor: import('vue').Ref<CodeMirrorEditor | null>,
+ *  setValue: (value: string) => void,
+ *  append: (value: string) => void,
+ *  hasErrors: () => boolean
+ * }}
+ */
 export default function useCodeMirror({
   emit,
   initialValue = "",
@@ -17,14 +40,19 @@ export default function useCodeMirror({
   textareaRef
 }) {
   const state = reactive({
+    /** @type {CodeMirrorEditor | null} */
     cm: null,
-    dirty: null,
+    dirty: false,
+    /** @type {number | null} */
     generation: null
   });
 
-  const hasErrors = () => !!state.cm.state.lint.marked.length;
+  const hasErrors = () => Boolean(state.cm?.state?.lint?.marked?.length);
 
   const setValue = (val) => {
+    if (!state.cm) {
+      return;
+    }
     state.cm.setValue(val);
     state.generation = state.cm.doc.changeGeneration(true);
     state.cm.markClean();
@@ -32,33 +60,37 @@ export default function useCodeMirror({
   };
 
   const append = (val) => {
+    if (!state.cm) {
+      return;
+    }
     state.cm.doc.replaceRange(val, { line: Infinity });
   };
 
   const initialize = () => {
+    const element = textareaRef?.value;
+    if (!element) {
+      return;
+    }
 
-    // CodeMirror.registerHelper("lint", options.mode, function (text) {
-    //   return options.lint.getAnnotations;
-    // });
+    const resolvedOptions = unref(options);
 
-    // create code mirror instance
     state.cm = markRaw(
-      CodeMirror.fromTextArea(textareaRef.value, {
-        ...unref(options)
+      CodeMirror.fromTextArea(element, {
+        ...resolvedOptions
       })
     );
 
-    // initialize editor with initial value
     state.cm.setValue(initialValue);
-
-    // mark clean and prep for change tracking
     state.generation = state.cm.doc.changeGeneration(true);
-    state.dirty = !state.cm.doc.isClean(state.generation);
+    state.cm.markClean();
+    state.dirty = false;
 
-    // synchronize with state (if dirty)
-    state.cm.on("change", (cm) => {
-      state.dirty = !state.cm.doc.isClean(state.generation);
-      emit("change", { value: cm.getValue() });
+    state.cm.on("change", (cmInstance) => {
+      if (!state.cm) {
+        return;
+      }
+      state.dirty = !state.cm.doc.isClean(state.generation ?? undefined);
+      emit("change", { value: cmInstance.getValue() });
     });
   };
 

@@ -1,13 +1,28 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 
+/**
+ * @typedef {import('@/types').UploaderDialogOptions} UploaderDialogOptions
+ * @typedef {import('@/types').FileDialogResult} FileDialogResult
+ */
+
+/** @type {UploaderDialogOptions} */
 const defaultDialogOptions = {
   multiple: true,
   accept: '*',
   directory: true,
 };
 
+/**
+ * Provides a hidden file input that can be programmatically triggered.
+ * @returns {{
+ *  openFileDialog: (opts?: UploaderDialogOptions) => Promise<void>,
+ *  files: import('vue').Ref<FileDialogResult>
+ * }}
+ */
 export function useFileDialog() {
+  /** @type {import('vue').Ref<HTMLInputElement | null>} */
   const inputRef = ref(null);
+  /** @type {import('vue').Ref<FileDialogResult>} */
   const files = ref([]);
 
   onMounted(() => {
@@ -22,6 +37,11 @@ export function useFileDialog() {
     inputRef.value?.remove();
   });
 
+  /**
+   * Open the file picker with the provided options.
+   * @param {UploaderDialogOptions} [opts]
+   * @returns {Promise<void>}
+   */
   function openFileDialog(opts) {
     return new Promise((resolve) => {
       if (!inputRef.value) {
@@ -29,8 +49,11 @@ export function useFileDialog() {
       }
       files.value = [];
 
-      const options = { ...defaultDialogOptions, ...opts };
-      inputRef.value.accept = options.accept;
+      const options = { ...defaultDialogOptions, ...(opts || {}) };
+      const acceptValue = Array.isArray(options.accept)
+        ? options.accept.join(',')
+        : options.accept || '*';
+      inputRef.value.accept = acceptValue;
       inputRef.value.multiple = options.multiple;
       
       if (options.directory) {

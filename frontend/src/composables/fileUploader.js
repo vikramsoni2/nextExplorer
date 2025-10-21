@@ -6,15 +6,30 @@ import {useFileStore} from '@/stores/fileStore';
 import { apiBase, normalizePath } from '@/api';
 import { useAuthStore } from '@/stores/auth';
 
-export function useFileUploader() {
+/**
+ * @typedef {import('@/types').UploadFileInput} UploadFileInput
+ * @typedef {import('@/types').UploaderDialogOptions} UploaderDialogOptions
+ * @typedef {import('@/types').UppyInstance} UppyInstance
+ */
 
+/**
+ * Provides a composable wrapper around the Uppy uploader.
+ * @returns {{
+ *  files: import('vue').Ref<UploadFileInput[]>,
+ *  openDialog: (opts?: UploaderDialogOptions) => Promise<void>
+ * }}
+ */
+export function useFileUploader() {
   const disallowedFiles = ['.DS_Store', 'thumbs.db'];
   const uppyStore = useUppyStore();
   const fileStore = useFileStore();
   const authStore = useAuthStore();
+  /** @type {import('vue').Ref<HTMLInputElement | null>} */
   const inputRef = ref(null);
+  /** @type {import('vue').Ref<UploadFileInput[]>} */
   const files = ref([]);
 
+  /** @type {UppyInstance} */
   const uppy = new Uppy({
     debug: true,
     autoProceed: true,
@@ -30,6 +45,10 @@ export function useFileUploader() {
     allowedMetaFields: null
   });
 
+  /**
+   * Configure the XHRUpload plugin with the latest auth token.
+   * @param {string | null} token
+   */
   const applyAuthHeaders = (token) => {
     const plugin = uppy.getPlugin('XHRUpload');
     if (!plugin) {
@@ -61,6 +80,11 @@ export function useFileUploader() {
   });
 
 
+  /**
+   * Normalize the native File object into the structure Uppy expects.
+   * @param {File & { webkitRelativePath?: string }} file
+   * @returns {UploadFileInput}
+   */
   function uppyFile(file) {
     return {
       name: file.name,
@@ -73,8 +97,15 @@ export function useFileUploader() {
   }
 
 
+  /**
+   * Apply the dialog configuration to the hidden input element.
+   * @param {UploaderDialogOptions} options
+   */
   function setDialogAttributes(options) {
-    inputRef.value.accept = options.accept;
+    const acceptValue = Array.isArray(options.accept)
+      ? options.accept.join(',')
+      : options.accept || '*';
+    inputRef.value.accept = acceptValue;
     inputRef.value.multiple = options.multiple;
     inputRef.value.webkitdirectory = !!options.directory;
     inputRef.value.directory = !!options.directory;
@@ -82,8 +113,14 @@ export function useFileUploader() {
   }
 
 
+  /**
+   * Open the native file picker and add selected files to Uppy.
+   * @param {UploaderDialogOptions} [opts]
+   * @returns {Promise<void>}
+   */
   function openDialog(opts) {
 
+    /** @type {UploaderDialogOptions} */
     const defaultDialogOptions = {
       multiple: true,
       accept: '*',
@@ -93,8 +130,8 @@ export function useFileUploader() {
       if (!inputRef.value) return;
 
       files.value = [];
-      const options = { ...defaultDialogOptions, ...opts };
-      
+      const options = { ...defaultDialogOptions, ...(opts || {}) };
+
       setDialogAttributes(options);
 
       inputRef.value.onchange = (e) => {

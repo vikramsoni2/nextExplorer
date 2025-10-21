@@ -3,15 +3,29 @@ import { withViewTransition } from '@/utils';
 import { isEditableExtension } from '@/config/editor';
 import { usePreviewManager } from '@/plugins/preview/manager';
 
+/**
+ * @typedef {import('@/types').FileItem} FileItem
+ */
 
+/**
+ * Navigation utilities for browsing and previewing files.
+ * @returns {{
+ *  openItem: (item: FileItem) => void,
+ *  openBreadcrumb: (path: string) => void,
+ *  goNext: () => void,
+ *  goPrev: () => void,
+ *  goUp: () => void
+ * }}
+ */
 export function useNavigation() {
-    
-  const router = useRouter()
-  const route = useRoute()
+  const router = useRouter();
+  const route = useRoute();
   const previewManager = usePreviewManager();
 
-
-  const openItem = withViewTransition((item)=>{
+  /**
+   * Open an item: navigate to directories, volumes, or launch previews/editors for files.
+   */
+  const openItem = withViewTransition((item) => {
     if (!item) return;
 
     const extensionFromKind = typeof item.kind === 'string' ? item.kind.toLowerCase() : '';
@@ -19,54 +33,64 @@ export function useNavigation() {
       ? item.name.split('.').pop().toLowerCase()
       : '';
 
-    if(item.kind==='volume'){
+    if (item.kind === 'volume') {
       router.push({ path: `/browse/${item.name}` });
       return;
     }
-    if(item.kind==='directory'){
-        const newPath = route.params.path ? `${route.params.path}/${item.name}` : item.name;
-        router.push({ path: `/browse/${newPath}` });
-        return;
+
+    if (item.kind === 'directory') {
+      const newPath = route.params.path ? `${route.params.path}/${item.name}` : item.name;
+      router.push({ path: `/browse/${newPath}` });
+      return;
     }
+
     if (previewManager.open(item)) {
       return;
     }
 
-    if(isEditableExtension(extensionFromKind) || isEditableExtension(extensionFromName)){
+    if (isEditableExtension(extensionFromKind) || isEditableExtension(extensionFromName)) {
       const basePath = item.path ? `${item.path}/${item.name}` : item.name;
       const fileToEdit = basePath.replace(/^\/+/, '');
       router.push({ path: `/editor/${fileToEdit}` });
-      return;
     }
   });
-  
 
-  const openBreadcrumb = withViewTransition((path)=>{
+  /**
+   * Navigate to a breadcrumb path.
+   */
+  const openBreadcrumb = withViewTransition((path) => {
     router.push({ path: `/browse/${path}` });
   });
 
-  const goNext = withViewTransition(()=>router.go(1));
+  /**
+   * Navigate forward in history with a view transition.
+   */
+  const goNext = withViewTransition(() => router.go(1));
 
-  const goPrev = withViewTransition(()=>router.go(-1));
+  /**
+   * Navigate backward in history with a view transition.
+   */
+  const goPrev = withViewTransition(() => router.go(-1));
 
+  /**
+   * Move one folder up the current path.
+   */
   const goUp = withViewTransition(() => {
     const path = decodeURIComponent(router.currentRoute.value.path);
     const segments = path.split('/').slice(2);
-    // console.log(segments);
     if (segments.length > 0) {
       segments.pop();
       router.push({ path: `/browse/${segments.join('/')}` });
     }
   });
 
-
   return {
     openItem,
     openBreadcrumb,
     goNext,
     goPrev,
-    goUp
-  }
+    goUp,
+  };
 }
 
 
