@@ -6,12 +6,14 @@ import { formatBytes, formatDate } from '@/utils';
 import { useNavigation } from '@/composables/navigation';
 import { useSelection } from '@/composables/itemSelection';
 import { useFileStore } from '@/stores/fileStore';
+import { useContextMenuStore } from '@/stores/contextMenu';
 
 const props = defineProps(['item', 'view'])
 
 const {openItem} = useNavigation()
 const {handleSelection, isSelected} = useSelection();
 const fileStore = useFileStore();
+const contextMenuStore = useContextMenuStore();
 const { renameState } = storeToRefs(fileStore);
 
 const renameInputRef = ref(null);
@@ -45,6 +47,28 @@ const handleClick = (event) => {
 const handleDblClick = () => {
   if (isRenaming.value) return;
   openItem(props.item);
+};
+
+const handleContextMenu = (event) => {
+  if (isRenaming.value) {
+    event.preventDefault();
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!isSelected(props.item)) {
+    handleSelection(props.item, event);
+  }
+
+  contextMenuStore.open({
+    x: event.clientX,
+    y: event.clientY,
+    context: {
+      kind: 'file-item',
+      item: props.item,
+    },
+  });
 };
 
 const selectRenameText = (input) => {
@@ -127,6 +151,7 @@ const handleRenameBlur = async () => {
     @dblclick="handleDblClick"
     class="flex flex-col items-center gap-2 p-4 rounded-md cursor-pointer select-none"    
     :class="{ 'opacity-60': isCut }"
+    @contextmenu.prevent="handleContextMenu"
     > 
         <FileIcon 
         :item="item" 
@@ -161,7 +186,8 @@ const handleRenameBlur = async () => {
     @dblclick="handleDblClick"
     
     class="flex items-center gap-2 p-4 rounded-md cursor-pointer select-none"
-    :class="{ 'opacity-60': isCut }">
+    :class="{ 'opacity-60': isCut }"
+    @contextmenu.prevent="handleContextMenu">
         
         <FileIcon 
         :item="item" 
@@ -201,11 +227,12 @@ const handleRenameBlur = async () => {
     class="grid select-none items-center grid-cols-[30px_1fr_150px_200px] 
     cursor-pointer auto-cols-fr p-1 px-4 rounded-md
     even:bg-zinc-100 dark:even:bg-zinc-900 dark:even:bg-opacity-50
-    "
+    " 
     :class="{
       '!text-white !bg-blue-500 !even:bg-blue-500 !dark:bg-blue-600 !dark:even:bg-blue-600 dark:bg-opacity-80 dark:even:bg-opacity-80': isSelected(item),
       'opacity-60': isCut && !isSelected(item)
     }" 
+    @contextmenu.prevent="handleContextMenu"
      >
         
         <FileIcon 

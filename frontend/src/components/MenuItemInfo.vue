@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ArrowDownTrayIcon, TrashIcon, ArrowPathIcon, PencilSquareIcon, StarIcon as StarIconOutline } from '@heroicons/vue/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid';
 import { useFileStore } from '@/stores/fileStore';
@@ -46,8 +46,18 @@ const deleteDialogMessage = computed(() => {
   return 'No items selected.';
 });
 
+const handleExternalDeleteRequest = () => {
+  if (!hasSelection.value) return;
+  isDeleteConfirmOpen.value = true;
+};
+
 onMounted(() => {
   favoritesStore.ensureLoaded();
+  window.addEventListener('file-actions:open-delete-confirm', handleExternalDeleteRequest);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('file-actions:open-delete-confirm', handleExternalDeleteRequest);
 });
 
 const getResolvedPaths = () => selectedItems.value

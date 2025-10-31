@@ -13,6 +13,7 @@ import MenuClipboard from '@/components/MenuClipboard.vue';
 import UploadProgress from '@/components/UploadProgress.vue';
 import UserMenu from '@/components/UserMenu.vue';
 import MenuItemInfo from '@/components/MenuItemInfo.vue';
+import FileContextMenu from '@/components/FileContextMenu.vue';
 import { RouterView, useRoute } from 'vue-router'
 import { useTitle, useStorage, useEventListener } from '@vueuse/core'
 
@@ -132,6 +133,7 @@ useTitle(currentPathName)
     </main>
   <UploadProgress/>
   <PreviewHost/>
+  <FileContextMenu/>
   </div>
 
 </template>
