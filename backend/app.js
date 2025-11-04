@@ -25,6 +25,35 @@ const logger = require('./utils/logger');
 const app = express();
 let server = null;
 
+// Helper: shrink EOC session payload to prevent oversized cookies
+// Set env OIDC_KEEP_TOKENS=true to disable stripping and keep full tokens in session
+// Pass keepIdToken=true to retain only id_token (useful for IdP logout)
+const sanitizeOidcSession = (session, { minimalUser, keepIdToken = false } = {}) => {
+  try {
+    const flag = String(process.env.OIDC_KEEP_TOKENS || '').trim().toLowerCase();
+    const keep = flag === '1' || flag === 'true' || flag === 'yes';
+    if (keep) return session;
+
+    const {
+      id_token,
+      access_token,
+      refresh_token,
+      token_type,
+      expires_at,
+      scope,
+      ...rest
+    } = session || {};
+
+    const user = minimalUser || (session && session.user) || undefined;
+    if (keepIdToken && id_token) {
+      return user ? { ...rest, user, id_token } : { ...rest, id_token };
+    }
+    return user ? { ...rest, user } : { ...rest };
+  } catch (_) {
+    return session;
+  }
+};
+
 // Trust proxy configuration (validated via Zod)
 try {
   const { getTrustProxySetting } = require('./config/trustProxy');
@@ -138,10 +167,12 @@ const bootstrap = async () => {
     })();
 
     if (eocEnabled) {
+      const wantIdpLogout = String(process.env.OIDC_IDP_LOGOUT || '').trim().toLowerCase();
+      const idpLogoutEnabled = wantIdpLogout === '1' || wantIdpLogout === 'true' || wantIdpLogout === 'yes';
       app.use(eocAuth({
         authRequired: false,
         auth0Logout: false,
-        idpLogout: false,
+        idpLogout: idpLogoutEnabled,
         issuerBaseURL: oidc.issuer,
         baseURL,
         clientID: oidc.clientId,
@@ -152,6 +183,8 @@ const bootstrap = async () => {
           scope: scopeParam,
         },
         // Sync OIDC users into the database on login by decoding the ID token claims
+        // and shrink the EOC session so the Set-Cookie header stays tiny.
+        // You can disable this behavior with OIDC_KEEP_TOKENS=true
         afterCallback: async (req, res, session) => {
           try {
             let claims = {};
@@ -169,7 +202,7 @@ const bootstrap = async () => {
             const roles = deriveRolesFromClaims(claims, envAuthConfig?.oidc?.adminGroups);
 
             const persistIssuer = oidc.issuer;
-            await createOrUpdateOidcUser({
+            const dbUser = await createOrUpdateOidcUser({
               issuer: persistIssuer,
               sub,
               username: preferredUsername,
@@ -177,10 +210,25 @@ const bootstrap = async () => {
               email,
               roles,
             });
+
+            // Establish a lightweight local session too (small connect.sid cookie)
+            try { if (req.session && dbUser?.id) req.session.localUserId = dbUser.id; } catch (_) {}
+
+            // Build a minimal user payload for EOC's req.oidc.user
+            const minimalUser = {
+              sub,
+              email,
+              preferred_username: preferredUsername || undefined,
+              name: displayName || undefined,
+            };
+
+            // Drop large token fields to keep cookie small (unless OIDC_KEEP_TOKENS=true)
+            // Keep only id_token if IdP logout is enabled (needs id_token_hint)
+            return sanitizeOidcSession(session, { minimalUser, keepIdToken: idpLogoutEnabled });
           } catch (e) {
             logger.warn({ err: e }, 'afterCallback user sync failed');
+            return session;
           }
-          return session;
         },
         // Align cookie behavior with typical SPA usage
         session: {
