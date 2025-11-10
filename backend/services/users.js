@@ -227,7 +227,7 @@ const createLocalUser = async ({ email, password, username, displayName, roles =
   db.prepare(`
     INSERT INTO auth_methods (id, user_id, method_type, password_hash, password_algo, created_at)
     VALUES (?, ?, 'local_password', ?, 'bcrypt', ?)
-  `).run(authId, userId, hash, 'bcrypt', now);
+  `).run(authId, userId, hash, now);
 
   user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   return toClientUser(user);
@@ -305,7 +305,7 @@ const setLocalPasswordAdmin = async ({ userId, newPassword }) => {
     db.prepare(`
       INSERT INTO auth_methods (id, user_id, method_type, password_hash, password_algo, created_at)
       VALUES (?, ?, 'local_password', ?, 'bcrypt', ?)
-    `).run(authId, userId, hash, 'bcrypt', nowIso());
+    `).run(authId, userId, hash, nowIso());
   }
 
   return true;
@@ -345,7 +345,7 @@ const addLocalPassword = async ({ userId, password }) => {
   db.prepare(`
     INSERT INTO auth_methods (id, user_id, method_type, password_hash, password_algo, created_at)
     VALUES (?, ?, 'local_password', ?, 'bcrypt', ?)
-  `).run(authId, userId, hash, 'bcrypt', nowIso());
+  `).run(authId, userId, hash, nowIso());
 
   return true;
 };
