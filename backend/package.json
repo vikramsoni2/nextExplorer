@@ -2,10 +2,12 @@
     "name": "finder",
     "version": "1.1.9",
     "description": "explorer",
-    "main": "app.js",
+    "main": "src/server.js",
     "scripts": {
         "test": "node --test",
-        "start": "node --watch app.js"
+        "start": "node src/server.js",
+        "dev": "node --watch src/server.js",
+        "test:infra": "node tests/infrastructure-test.js"
     },
     "author": "Vikram Soni",
     "license": "ISC",
