@@ -1,7 +1,9 @@
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tif', 'tiff', 'avif', 'heic'];
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'mkv', 'webm', 'm4v', 'avi', 'wmv', 'flv', 'mpg', 'mpeg'];
 const DOCUMENT_EXTENSIONS = ['pdf'];
-const EXCLUDED_FILES = ['thumbs.db', '.DS_Store'];
+// Files/folders that should never appear in normal listings or search.
+// Includes OS/system files and the internal per-volume trash directory.
+const EXCLUDED_FILES = ['thumbs.db', '.DS_Store', '.trash'];
 
 const MIME_TYPES = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',

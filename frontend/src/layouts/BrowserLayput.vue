@@ -4,6 +4,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import HeaderLogo from '@/components/HeaderLogo.vue';
 import FavMenu from '@/components/FavMenu.vue';
 import VolMenu from '@/components/VolMenu.vue';
+import TrashMenu from '@/components/TrashMenu.vue';
 import CreateNew from '@/components/CreateNew.vue';
 import ViewMode from '@/components/ViewMode.vue';
 import BreadCrumb from '@/components/BreadCrumb.vue';
@@ -97,6 +98,7 @@ useClipboardShortcuts();
       <HeaderLogo appname="Explorer"/>
       <CreateNew class="mt-6"/>
       <FavMenu />
+      <TrashMenu />
       <VolMenu />
       <UserMenu class="mt-auto -mx-4"/>
     </aside>

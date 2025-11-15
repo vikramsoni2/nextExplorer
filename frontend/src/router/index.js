@@ -15,6 +15,7 @@ import SettingsAbout from '@/views/settings/SettingsAbout.vue'
 import AboutView from '@/views/AboutView.vue'
 import AuthSetupView from '@/views/AuthSetupView.vue'
 import AuthLoginView from '@/views/AuthLoginView.vue'
+import TrashView from '@/views/TrashView.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -71,6 +72,14 @@ const router = createRouter({
       meta: { requiresAuth: true },
       children: [
         { path: '', component: SearchResultsView },
+      ],
+    },
+    {
+      path: '/trash',
+      component: BrowserLayput,
+      meta: { requiresAuth: true },
+      children: [
+        { path: '', component: TrashView },
       ],
     },
     {

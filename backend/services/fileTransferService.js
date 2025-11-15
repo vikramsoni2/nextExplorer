@@ -9,6 +9,7 @@ const {
   combineRelativePath,
   findAvailableName,
 } = require('../utils/pathUtils');
+const { moveItemsToTrash } = require('./trashService');
 
 const copyEntry = async (sourcePath, destinationPath, isDirectory) => {
   if (isDirectory) {
@@ -91,25 +92,8 @@ const transferItems = async (items, destination, operation) => {
 };
 
 const deleteItems = async (items = []) => {
-  if (!Array.isArray(items) || items.length === 0) {
-    throw new Error('At least one item is required.');
-  }
-
-  const results = [];
-
-  for (const item of items) {
-    const { relativePath, absolutePath } = resolveItemPaths(item);
-    if (!(await pathExists(absolutePath))) {
-      results.push({ path: relativePath, status: 'missing' });
-      continue;
-    }
-
-    const stats = await fs.stat(absolutePath);
-    await fs.rm(absolutePath, { recursive: stats.isDirectory(), force: true });
-    results.push({ path: relativePath, status: 'deleted' });
-  }
-
-  return results;
+  // Route all deletions through the trash layer so they can be recovered
+  return moveItemsToTrash(items);
 };
 
 module.exports = {

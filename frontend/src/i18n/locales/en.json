@@ -106,6 +106,22 @@
     "emptyTitle": "No favorites yet",
     "emptyDescription": "Select a directory and tap the star in the main toolbar to pin it here."
   },
+  "trash": {
+    "title": "Trash",
+    "subtitle": "Items you delete are moved here and can be restored until permanently removed.",
+    "loading": "Loading trash…",
+    "empty": "Trash is empty.",
+    "name": "Name",
+    "originalLocation": "Original location",
+    "volume": "Volume",
+    "size": "Size",
+    "deletedAt": "Deleted",
+    "restoreSelected": "Restore",
+    "restoring": "Restoring…",
+    "deleteSelected": "Delete permanently",
+    "deleting": "Deleting…",
+    "confirmDeletePermanent": "Permanently delete the selected items? This cannot be undone."
+  },
   "spotlight": {
     "placeholder": "Search files and folders…",
     "close": "Close",
