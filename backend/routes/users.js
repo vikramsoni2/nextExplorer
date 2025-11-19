@@ -1,5 +1,5 @@
 const express = require('express');
-const { listUsers, updateUserRoles, updateUserProfile, createLocalUser, setLocalPasswordAdmin, deleteUser, getById, countAdmins } = require('../services/users');
+const { listUsers, updateUserRoles, updateUserProfile, createLocalUser, setLocalPasswordAdmin, deleteUser, getById, countAdmins, getUserById, getUserVolumes, assignUserVolume, removeUserVolume } = require('../services/users');
 const asyncHandler = require('../utils/asyncHandler');
 const { ForbiddenError, NotFoundError, ValidationError } = require('../errors/AppError');
 
@@ -17,6 +17,52 @@ const ensureAdmin = (req, res, next) => {
 router.get('/users', ensureAdmin, asyncHandler(async (req, res) => {
   const users = await listUsers();
   res.json({ users });
+}));
+
+// GET /api/users/:id - get single user with details (admin only)
+router.get('/users/:id', ensureAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params || {};
+  const user = await getUserById(id);
+  if (!user) {
+    throw new NotFoundError('User not found.');
+  }
+  res.json({ user });
+}));
+
+// GET /api/users/:id/volumes - get user's assigned volumes (admin only)
+router.get('/users/:id/volumes', ensureAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params || {};
+  const user = await getById(id);
+  if (!user) {
+    throw new NotFoundError('User not found.');
+  }
+  const volumes = await getUserVolumes(id);
+  res.json({ volumes });
+}));
+
+// POST /api/users/:id/volumes - assign a volume to user (admin only)
+router.post('/users/:id/volumes', ensureAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params || {};
+  const { volumePath, volumeName } = req.body || {};
+
+  if (!volumePath || !volumeName) {
+    throw new ValidationError('volumePath and volumeName are required.');
+  }
+
+  const user = await getById(id);
+  if (!user) {
+    throw new NotFoundError('User not found.');
+  }
+
+  const volume = await assignUserVolume({ userId: id, volumePath, volumeName });
+  res.status(201).json({ volume });
+}));
+
+// DELETE /api/users/:id/volumes/:volumeId - remove volume assignment (admin only)
+router.delete('/users/:id/volumes/:volumeId', ensureAdmin, asyncHandler(async (req, res) => {
+  const { volumeId } = req.params || {};
+  await removeUserVolume(volumeId);
+  res.status(204).end();
 }));
 
 // PATCH /api/users/:id - update roles or profile (admin only)

@@ -16,6 +16,9 @@ const parseScopes = (raw) => {
 const volumeDir = path.resolve(env.VOLUME_ROOT);
 const configDir = path.resolve(env.CONFIG_DIR);
 const cacheDir = path.resolve(env.CACHE_DIR);
+const userHomesDir = env.USER_HOMES_ROOT
+  ? path.resolve(env.USER_HOMES_ROOT)
+  : path.join(volumeDir, 'user_homes');
 
 const directories = {
   volume: volumeDir,
@@ -24,6 +27,7 @@ const directories = {
   cache: cacheDir,
   thumbnails: path.join(cacheDir, 'thumbnails'),
   extensions: path.join(configDir, 'extensions'),
+  userHomes: userHomesDir,
 };
 
 // --- Public URL ---

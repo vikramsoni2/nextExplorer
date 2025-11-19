@@ -13,6 +13,7 @@ const { getSettings } = require('../services/settingsService');
 const logger = require('../utils/logger');
 const asyncHandler = require('../utils/asyncHandler');
 const { NotFoundError } = require('../errors/AppError');
+const { enforceHomeDirectoryPrivacy } = require('../middleware/homeDirectoryPrivacy');
 
 const router = express.Router();
 const { getPermissionForPath } = require('../services/accessControlService');
@@ -22,7 +23,7 @@ const previewable = new Set([
   ...(extensions.documents || []),
 ]);
 
-router.get('/browse/*', asyncHandler(async (req, res) => {
+router.get('/browse/*', enforceHomeDirectoryPrivacy, asyncHandler(async (req, res) => {
   const settings = await getSettings();
   const thumbsEnabled = settings?.thumbnails?.enabled !== false;
   const relativePath = normalizeRelativePath(req.params[0]);

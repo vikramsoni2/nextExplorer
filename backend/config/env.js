@@ -12,6 +12,7 @@ module.exports = {
   VOLUME_ROOT: process.env.VOLUME_ROOT || '/mnt',
   CONFIG_DIR: process.env.CONFIG_DIR || '/config',
   CACHE_DIR: process.env.CACHE_DIR || '/cache',
+  USER_HOMES_ROOT: process.env.USER_HOMES_ROOT || null,
   
   // Public URL & Network
   PUBLIC_URL: process.env.PUBLIC_URL?.trim() || null,

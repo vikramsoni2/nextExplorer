@@ -39,3 +39,28 @@ export async function deleteUser(userId) {
     method: 'DELETE',
   });
 }
+
+export async function fetchUserById(userId) {
+  return requestJson(`/api/users/${encodeURIComponent(userId)}`, {
+    method: 'GET',
+  });
+}
+
+export async function fetchUserVolumes(userId) {
+  return requestJson(`/api/users/${encodeURIComponent(userId)}/volumes`, {
+    method: 'GET',
+  });
+}
+
+export async function assignUserVolume(userId, { volumePath, volumeName }) {
+  return requestJson(`/api/users/${encodeURIComponent(userId)}/volumes`, {
+    method: 'POST',
+    body: JSON.stringify({ volumePath, volumeName }),
+  });
+}
+
+export async function removeUserVolume(userId, volumeId) {
+  return requestJson(`/api/users/${encodeURIComponent(userId)}/volumes/${encodeURIComponent(volumeId)}`, {
+    method: 'DELETE',
+  });
+}

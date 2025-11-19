@@ -207,6 +207,32 @@ const migrate = (db) => {
       db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run('schema_version', String(4));
       version = 4;
     }
+    if (version < 6) {
+      console.log('[DB Migration] Migrating to v5: Adding user home directories and volume assignments...');
+
+      // Add home_directory_path to users table
+      db.exec(`
+        ALTER TABLE users ADD COLUMN home_directory_path TEXT DEFAULT NULL;
+      `);
+
+      // Create user_volumes table
+      db.exec(`
+        CREATE TABLE user_volumes (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          volume_path TEXT NOT NULL,
+          volume_name TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_user_volumes_user ON user_volumes(user_id);
+        CREATE UNIQUE INDEX idx_user_volumes_user_path ON user_volumes(user_id, volume_path);
+      `);
+
+      console.log('[DB Migration] Migration to v5 completed successfully!');
+      db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run('schema_version', String(6));
+      version = 6;
+    }
   })();
 };
 

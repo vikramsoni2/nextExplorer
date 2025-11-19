@@ -347,7 +347,34 @@
       "promptNewPassword": "Enter a new password for {user} (min 6 chars):",
       "failedUpdate": "Failed to update user",
       "editUser": "Edit user",
-      "updating": "Updating…"
+      "updating": "Updating…",
+      "lastLogin": "Last login",
+      "authMode": "Auth mode",
+      "noAuthMethods": "No auth methods",
+      "neverLoggedIn": "Never logged in",
+      "justNow": "Just now",
+      "detail": {
+        "title": "User Details",
+        "profile": "Profile",
+        "authMethods": "Authentication Methods",
+        "volumes": "Assigned Volumes",
+        "homeDirectory": "Home Directory",
+        "createdAt": "Created",
+        "updatedAt": "Last updated"
+      },
+      "volumes": {
+        "title": "Volume Assignments",
+        "addVolume": "Add Volume",
+        "removeVolume": "Remove",
+        "empty": "No volumes assigned",
+        "emptyHint": "Assign volumes to allow this user to access specific directories.",
+        "browserTitle": "Select Directory",
+        "selectPath": "Select this path",
+        "browsing": "Browsing:",
+        "failedLoad": "Failed to load volumes",
+        "failedAssign": "Failed to assign volume",
+        "failedRemove": "Failed to remove volume"
+      }
     }
   }
 }

@@ -4,8 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import HeaderLogo from '@/components/HeaderLogo.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
-import { LockClosedIcon, KeyIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline';
-import { useStorage } from '@vueuse/core';
+import { LockClosedIcon, KeyIcon, InformationCircleIcon, XMarkIcon, ChevronUpDownIcon } from '@heroicons/vue/24/outline';
+import { useStorage, onClickOutside } from '@vueuse/core';
 import { apiBase } from '@/api';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
@@ -85,11 +85,23 @@ const languages = computed(() => availableLocaleOptions.map(({ code, label }) =>
   label: t(label),
 })));
 
+const currentLanguage = computed(() => {
+  const list = languages.value;
+  return list.find(lang => lang.code === locale.value) || list[0] || { code: locale.value, label: locale.value.toUpperCase() };
+});
+
+const languageMenuOpen = ref(false);
+const languageSwitcherRef = ref(null);
+
 function setLocale(lang) {
   try { localStorage.setItem('locale', lang); } catch (_) {}
   if (typeof document !== 'undefined') { document.documentElement.setAttribute('lang', lang); }
   locale.value = lang;
 }
+
+onClickOutside(languageSwitcherRef, () => {
+  languageMenuOpen.value = false;
+});
 
 const redirectToDestination = () => {
   const target = redirectTarget.value;
@@ -238,7 +250,7 @@ const handleOidcLogin = () => {
 
       <!-- Right: Auth form -->
       <section class="flex items-center justify-center px-6 py-10">
-        <div class="w-full max-w-md">
+        <div class="w-full max-w-md flex flex-col">
           <div class="mb-8 flex items-center justify-between md:hidden">
             
             <HeaderLogo appname="NextExplorer"/>
@@ -375,6 +387,42 @@ const handleOidcLogin = () => {
          
 
           <p v-if="!supportsLocal && statusError" class="mt-4" :class="helperTextClasses">{{ statusError }}</p>
+
+          <!-- Language popover -->
+          <div class="mt-8 flex justify-end text-xs text-white/70">
+            <div ref="languageSwitcherRef" class="relative inline-block text-left">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 hover:bg-white/10 focus:outline-none"
+                :aria-label="$t('i18n.language')"
+                @click="languageMenuOpen = !languageMenuOpen"
+              >
+                <span class="uppercase tracking-wide text-[0.7rem]">
+                  {{ currentLanguage.code }}
+                </span>
+                <span class="hidden sm:inline text-xs">
+                  {{ currentLanguage.label }}
+                </span>
+                <ChevronUpDownIcon class="h-4 w-4 text-white/60" />
+              </button>
+
+              <div
+                v-if="languageMenuOpen"
+                class="absolute right-0 bottom-full mb-2 z-20 w-44 rounded-lg border border-white/10 bg-nextzinc-900/95 py-1 text-xs shadow-lg backdrop-blur"
+              >
+                <button
+                  v-for="lang in languages"
+                  :key="lang.code"
+                  type="button"
+                  class="flex w-full items-center justify-between px-3 py-1.5 hover:bg-white/10"
+                  :class="{ 'font-semibold text-white': $i18n.locale === lang.code }"
+                  @click="setLocale(lang.code); languageMenuOpen = false"
+                >
+                  <span>{{ lang.label }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -388,20 +436,5 @@ const handleOidcLogin = () => {
       </p>
     </ModalDialog> -->
 
-    <!-- Language switcher (login only) -->
-    <div class="py-3 text-center text-white/70 text-xs w-1/2 fixed bottom-0 right-0">
-      <span class="mr-2">{{ $t('i18n.language') }}:</span>
-      <template v-for="(lang, idx) in languages" :key="lang.code">
-        <button
-          type="button"
-          class="px-2 py-1 rounded hover:bg-white/10"
-          :class="{ 'bg-white/10 font-semibold': $i18n.locale === lang.code }"
-          @click="setLocale(lang.code)"
-        >
-          {{ lang.label }}
-        </button>
-        <span v-if="idx < languages.length - 1" class="mx-2">•</span>
-      </template>
-    </div>
   </div>
 </template>

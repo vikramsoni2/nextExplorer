@@ -1,8 +1,11 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs/promises');
 
 const { getDb } = require('./db');
-const { auth: envAuthConfig } = require('../config/index');
+const { auth: envAuthConfig, directories } = require('../config/index');
+const { ensureDir } = require('../utils/fsUtils');
 
 const nowIso = () => new Date().toISOString();
 
@@ -75,6 +78,33 @@ const countAdmins = async () => {
     } catch (_) { /* ignore */ }
   }
   return count;
+};
+
+/**
+ * Create and set up user home directory
+ * Returns the path to the created home directory
+ */
+const createUserHomeDirectory = async (userId) => {
+  try {
+    const homePath = path.join(directories.userHomes, userId);
+
+    // Create the directory if it doesn't exist
+    await ensureDir(homePath);
+
+    // Set appropriate permissions (755 - owner can read/write/execute, others can read/execute)
+    try {
+      await fs.chmod(homePath, 0o755);
+    } catch (chmodError) {
+      // Non-fatal: permissions may not be changeable on all filesystems
+      console.warn(`[Users] Could not set permissions for ${homePath}:`, chmodError.message);
+    }
+
+    console.log(`[Users] Created home directory for user ${userId}: ${homePath}`);
+    return homePath;
+  } catch (error) {
+    console.error(`[Users] Failed to create home directory for user ${userId}:`, error);
+    throw error;
+  }
 };
 
 const getById = async (id) => {
@@ -216,11 +246,14 @@ const createLocalUser = async ({ email, password, username, displayName, roles =
   const rolesJson = JSON.stringify(Array.isArray(roles) ? roles : ['user']);
   const hash = bcrypt.hashSync(password, 12);
 
+  // Create home directory
+  const homePath = await createUserHomeDirectory(userId);
+
   // Create user
   db.prepare(`
-    INSERT INTO users (id, email, email_verified, username, display_name, roles, created_at, updated_at)
-    VALUES (?, ?, 0, ?, ?, ?, ?, ?)
-  `).run(userId, normEmail, username, displayName, rolesJson, now, now);
+    INSERT INTO users (id, email, email_verified, username, display_name, roles, home_directory_path, created_at, updated_at)
+    VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)
+  `).run(userId, normEmail, username, displayName, rolesJson, homePath, now, now);
 
   // Create password auth method
   const authId = generateId();
@@ -443,11 +476,14 @@ const getOrCreateOidcUser = async ({ issuer, sub, email, emailVerified, username
   const now = nowIso();
   const rolesJson = JSON.stringify(Array.isArray(roles) ? roles : ['user']);
 
+  // Create home directory
+  const homePath = await createUserHomeDirectory(userId);
+
   // Create user
   db.prepare(`
-    INSERT INTO users (id, email, email_verified, username, display_name, roles, created_at, updated_at)
-    VALUES (?, ?, 1, ?, ?, ?, ?, ?)
-  `).run(userId, normEmail, username, displayName, rolesJson, now, now);
+    INSERT INTO users (id, email, email_verified, username, display_name, roles, home_directory_path, created_at, updated_at)
+    VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
+  `).run(userId, normEmail, username, displayName, rolesJson, homePath, now, now);
 
   // Create OIDC auth method
   const authId = generateId();
@@ -513,7 +549,37 @@ const getRequestUser = async (req) => {
 const listUsers = async () => {
   const db = await getDb();
   const rows = db.prepare('SELECT * FROM users ORDER BY created_at ASC').all();
-  return rows.map((r) => toClientUser(r));
+
+  // Enhance each user with auth methods and last login
+  return rows.map((r) => {
+    const user = toClientUser(r);
+
+    // Get auth methods for this user
+    const authMethods = db.prepare('SELECT * FROM auth_methods WHERE user_id = ? AND enabled = 1').all(r.id);
+
+    // Calculate last login
+    let lastLogin = null;
+    if (authMethods.length > 0) {
+      const lastUsedDates = authMethods
+        .map(m => m.last_used_at)
+        .filter(Boolean)
+        .map(d => new Date(d).getTime())
+        .filter(t => Number.isFinite(t));
+
+      if (lastUsedDates.length > 0) {
+        lastLogin = new Date(Math.max(...lastUsedDates)).toISOString();
+      }
+    }
+
+    // Determine auth modes
+    const authModes = authMethods.map(m => m.method_type);
+
+    return {
+      ...user,
+      lastLogin,
+      authModes,
+    };
+  });
 };
 
 const updateUserProfile = async ({ userId, email, username, displayName }) => {
@@ -607,6 +673,77 @@ const deleteUser = async ({ userId }) => {
   return true;
 };
 
+/**
+ * Get user by ID with auth methods and last login
+ */
+const getUserById = async (userId) => {
+  const db = await getDb();
+  const user = await getById(userId);
+  if (!user) return null;
+
+  // Get auth methods
+  const authMethods = db.prepare('SELECT * FROM auth_methods WHERE user_id = ? AND enabled = 1').all(userId);
+
+  // Calculate last login from auth methods
+  let lastLogin = null;
+  if (authMethods.length > 0) {
+    const lastUsedDates = authMethods
+      .map(m => m.last_used_at)
+      .filter(Boolean)
+      .map(d => new Date(d).getTime())
+      .filter(t => Number.isFinite(t));
+
+    if (lastUsedDates.length > 0) {
+      lastLogin = new Date(Math.max(...lastUsedDates)).toISOString();
+    }
+  }
+
+  return {
+    ...user,
+    authMethods: authMethods.map(m => ({
+      id: m.id,
+      methodType: m.method_type,
+      providerName: m.provider_name,
+      enabled: Boolean(m.enabled),
+      lastUsedAt: m.last_used_at || null,
+    })),
+    lastLogin,
+  };
+};
+
+/**
+ * Get user's assigned volumes
+ */
+const getUserVolumes = async (userId) => {
+  const db = await getDb();
+  return db.prepare('SELECT * FROM user_volumes WHERE user_id = ? ORDER BY created_at ASC').all(userId);
+};
+
+/**
+ * Assign a volume to a user
+ */
+const assignUserVolume = async ({ userId, volumePath, volumeName }) => {
+  const db = await getDb();
+  const id = generateId();
+  const now = nowIso();
+
+  db.prepare(`
+    INSERT INTO user_volumes (id, user_id, volume_path, volume_name, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, userId, volumePath, volumeName, now);
+
+  return db.prepare('SELECT * FROM user_volumes WHERE id = ?').get(id);
+};
+
+/**
+ * Remove a volume assignment
+ */
+const removeUserVolume = async (volumeId) => {
+  const db = await getDb();
+  db.prepare('DELETE FROM user_volumes WHERE id = ?').run(volumeId);
+  return true;
+};
+
 module.exports = {
   countUsers,
   countAdmins,
@@ -625,6 +762,10 @@ module.exports = {
   updateUserProfile,
   deriveRolesFromClaims,
   deleteUser,
+  getUserById,
+  getUserVolumes,
+  assignUserVolume,
+  removeUserVolume,
 
   // Backward compatibility (deprecated)
   countLocalUsers: countUsers,

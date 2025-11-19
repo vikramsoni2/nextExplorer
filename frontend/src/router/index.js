@@ -10,6 +10,7 @@ import SettingsFilesThumbnails from '@/views/settings/SettingsFilesThumbnails.vu
 import SettingsAccessControl from '@/views/settings/SettingsAccessControl.vue'
 import SettingsComingSoon from '@/views/settings/SettingsComingSoon.vue'
 import AdminUsers from '@/views/settings/AdminUsers.vue'
+import UserDetailView from '@/views/settings/UserDetailView.vue'
 import SettingsPassword from '@/views/settings/SettingsPassword.vue'
 import SettingsAbout from '@/views/settings/SettingsAbout.vue'
 import AboutView from '@/views/AboutView.vue'
@@ -36,6 +37,7 @@ const router = createRouter({
         // Admin-only placeholder routes
         { path: 'admin-overview', component: SettingsComingSoon, meta: { requiresAdmin: true } },
         { path: 'admin-users', component: AdminUsers, meta: { requiresAdmin: true } },
+        { path: 'admin-users/:id', component: UserDetailView, meta: { requiresAdmin: true } },
         { path: 'admin-mounts', component: SettingsComingSoon, meta: { requiresAdmin: true } },
         { path: 'admin-audit', component: SettingsComingSoon, meta: { requiresAdmin: true } },
         // Scaffolded routes
