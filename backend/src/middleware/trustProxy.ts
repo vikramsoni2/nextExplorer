@@ -1,6 +1,7 @@
+import type { Express } from 'express';
 const logger = require('../utils/logger');
 
-const configureTrustProxy = (app) => {
+const configureTrustProxy = (app: Express): void => {
   try {
     const { getTrustProxySetting } = require('../config/trustProxy');
     const tp = getTrustProxySetting();

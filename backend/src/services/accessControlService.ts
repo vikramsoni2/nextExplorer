@@ -1,8 +1,8 @@
-const { normalizeRelativePath } = require('../utils/pathUtils');
-const { getSettings, setSettings } = require('../services/settingsService');
+import { normalizeRelativePath } from '../utils/pathUtils';
+import { getSettings, setSettings, AccessPermission, AccessRule } from './settingsService';
 
 // Determine permission for a given relative path: 'rw' | 'ro' | 'hidden'
-const getPermissionForPath = async (relativePath) => {
+const getPermissionForPath = async (relativePath: string): Promise<AccessPermission> => {
   const rel = normalizeRelativePath(relativePath || '');
   const settings = await getSettings();
   const rules = Array.isArray(settings?.access?.rules) ? settings.access.rules : [];
@@ -26,18 +26,24 @@ const getPermissionForPath = async (relativePath) => {
   return 'rw';
 };
 
-const getRules = async () => {
+const getRules = async (): Promise<AccessRule[]> => {
   const settings = await getSettings();
   return Array.isArray(settings?.access?.rules) ? settings.access.rules : [];
 };
 
-const setRules = async (rules) => {
+const setRules = async (rules: AccessRule[]): Promise<AccessRule[]> => {
   const next = await setSettings({
     access: {
       rules: Array.isArray(rules) ? rules : [],
     },
   });
   return next.access.rules;
+};
+
+export {
+  getPermissionForPath,
+  getRules,
+  setRules,
 };
 
 module.exports = {

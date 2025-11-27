@@ -1,21 +1,32 @@
-const logger = require('../utils/logger');
+import logger from '../utils/logger';
 
-const discoveryCache = new Map();
+interface DiscoveryCacheEntry {
+  configuration: any;
+  expiresAt: number;
+}
+
+const discoveryCache = new Map<string, DiscoveryCacheEntry>();
 const DEFAULT_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-const normalizeIssuer = (issuer) => {
+const normalizeIssuer = (issuer: unknown): string | null => {
   if (typeof issuer !== 'string' || !issuer.trim()) return null;
   const trimmed = issuer.trim();
   return trimmed.endsWith('/') ? trimmed.replace(/\/+$/, '') : trimmed;
 };
 
-const buildDiscoveryUrl = (issuer) => {
+const buildDiscoveryUrl = (issuer: unknown): string | null => {
   const normalized = normalizeIssuer(issuer);
   if (!normalized) return null;
   return `${normalized}/.well-known/openid-configuration`;
 };
 
-const fetchJson = async (url, { timeoutMs = 5000, headers = {}, method = 'GET' } = {}) => {
+interface FetchJsonOptions {
+  timeoutMs?: number;
+  headers?: Record<string, string>;
+  method?: string;
+}
+
+const fetchJson = async (url: string, { timeoutMs = 5000, headers = {}, method = 'GET' }: FetchJsonOptions = {}) => {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const id = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
@@ -30,7 +41,7 @@ const fetchJson = async (url, { timeoutMs = 5000, headers = {}, method = 'GET' }
     });
 
     if (!response.ok) {
-      const err = new Error(`Failed request to ${url}: ${response.status} ${response.statusText}`);
+      const err: any = new Error(`Failed request to ${url}: ${response.status} ${response.statusText}`);
       err.status = response.status;
       throw err;
     }
@@ -41,7 +52,15 @@ const fetchJson = async (url, { timeoutMs = 5000, headers = {}, method = 'GET' }
   }
 };
 
-const discoverOpenIdConfiguration = async ({ issuer, forceRefresh = false, timeoutMs = 5000 } = {}) => {
+interface DiscoverOptions {
+  issuer?: string;
+  forceRefresh?: boolean;
+  timeoutMs?: number;
+}
+
+const discoverOpenIdConfiguration = async (
+  { issuer, forceRefresh = false, timeoutMs = 5000 }: DiscoverOptions = {},
+): Promise<any | null> => {
   logger.debug({ issuer, forceRefresh, timeoutMs }, 'Starting OIDC configuration discovery');
   
   const normalized = normalizeIssuer(issuer);
@@ -69,14 +88,23 @@ const discoverOpenIdConfiguration = async ({ issuer, forceRefresh = false, timeo
     return null;
   }
 
-  const ttlMs = Number(configuration.configuration_ttl || DEFAULT_TTL_MS);
+  const ttlMs = Number((configuration as any).configuration_ttl || DEFAULT_TTL_MS);
   const expiresAt = Date.now() + (Number.isFinite(ttlMs) && ttlMs > 0 ? ttlMs : DEFAULT_TTL_MS);
 
   discoveryCache.set(normalized, { configuration, expiresAt });
   return configuration;
 };
 
-const fetchUserInfoClaims = async ({ issuer, accessToken, userInfoURL = null, timeoutMs = 5000 } = {}) => {
+interface FetchUserInfoOptions {
+  issuer?: string;
+  accessToken?: string;
+  userInfoURL?: string | null;
+  timeoutMs?: number;
+}
+
+const fetchUserInfoClaims = async (
+  { issuer, accessToken, userInfoURL = null, timeoutMs = 5000 }: FetchUserInfoOptions = {},
+): Promise<any | null> => {
   logger.debug({ issuer, timeoutMs, hasOverride: Boolean(userInfoURL) }, 'Starting userinfo claims fetch');
   
   if (!issuer || !accessToken) {
@@ -85,7 +113,7 @@ const fetchUserInfoClaims = async ({ issuer, accessToken, userInfoURL = null, ti
   }
 
   // Prefer explicit override when provided and valid
-  let endpoint = null;
+  let endpoint: string | null = null;
   if (userInfoURL) {
     try {
       const u = new URL(userInfoURL);
@@ -124,6 +152,8 @@ const fetchUserInfoClaims = async ({ issuer, accessToken, userInfoURL = null, ti
     return null;
   }
 };
+
+export { discoverOpenIdConfiguration, fetchUserInfoClaims, normalizeIssuer };
 
 module.exports = {
   discoverOpenIdConfiguration,

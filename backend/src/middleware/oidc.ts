@@ -1,3 +1,4 @@
+import type { Express, Request, Response } from 'express';
 const crypto = require('crypto');
 const { auth: eocAuth } = require('express-openid-connect');
 
@@ -10,7 +11,7 @@ const logger = require('../utils/logger');
 /**
  * Derives baseURL from callbackUrl or PUBLIC_URL
  */
-const deriveBaseUrl = (oidc) => {
+const deriveBaseUrl = (oidc: any): string | null => {
   try {
     if (oidc.callbackUrl && /^https?:\/\//i.test(oidc.callbackUrl)) {
       const u = new URL(oidc.callbackUrl);
@@ -30,7 +31,7 @@ const deriveBaseUrl = (oidc) => {
 /**
  * Determines if OIDC cookies should be secure based on baseURL
  */
-const shouldOidcCookieBeSecure = (baseURL) => {
+const shouldOidcCookieBeSecure = (baseURL: string | null): boolean => {
   try {
     if (baseURL) {
       const u = new URL(baseURL);
@@ -43,7 +44,7 @@ const shouldOidcCookieBeSecure = (baseURL) => {
 /**
  * Resolves OIDC scopes, ensuring 'openid' is always included
  */
-const resolveOidcScopes = (oidc) => {
+const resolveOidcScopes = (oidc: any): string => {
   const scopes = Array.isArray(oidc.scopes) && oidc.scopes.length 
     ? oidc.scopes 
     : ['openid', 'profile', 'email'];
@@ -57,8 +58,8 @@ const resolveOidcScopes = (oidc) => {
 /**
  * Creates the afterCallback handler for user synchronization
  */
-const createAfterCallbackHandler = (oidc, envAuthConfig) => {
-  return async (req, res, session) => {
+const createAfterCallbackHandler = (oidc: any, envAuthConfig: any) => {
+  return async (req: Request & { oidc?: any }, res: Response, session: any) => {
     logger.debug('afterCallback: start');
     
     try {
@@ -75,7 +76,7 @@ const createAfterCallbackHandler = (oidc, envAuthConfig) => {
         'OIDC user login state'
       );
 
-      let claims = {};
+      let claims: any = {};
 
       // Prefer already-decoded user claims if available on req.oidc.user
       const hasReqUser = Boolean(req?.oidc?.user && req.oidc.user.sub);

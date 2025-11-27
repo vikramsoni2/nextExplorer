@@ -1,8 +1,10 @@
-const { directories } = require('../config/index');
-const { ensureDir } = require('./fsUtils');
-const logger = require('./logger');
+import config from '../config';
+import { ensureDir } from './fsUtils';
+import logger from './logger';
 
-const bootstrap = async () => {
+const { directories } = config;
+
+export const bootstrap = async (): Promise<void> => {
   logger.debug('Bootstrap start');
 
   const dirEntries = [
@@ -24,4 +26,3 @@ const bootstrap = async () => {
 };
 
 module.exports = { bootstrap };
-

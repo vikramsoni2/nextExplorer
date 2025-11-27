@@ -1,3 +1,4 @@
+import type { Express } from 'express';
 const crypto = require('crypto');
 const session = require('express-session');
 
@@ -5,7 +6,7 @@ const { auth: envAuthConfig } = require('../config/index');
 const { localStore } = require('../utils/sessionStore');
 const logger = require('../utils/logger');
 
-const configureSession = (app) => {
+const configureSession = (app: Express): void => {
   const sessionSecret = (envAuthConfig && envAuthConfig.sessionSecret)
     || process.env.SESSION_SECRET
     || crypto.randomBytes(32).toString('hex');

@@ -1,5 +1,6 @@
-const logger = require('../utils/logger');
-const { AppError } = require('../errors/AppError');
+import type { NextFunction, Request, Response } from 'express';
+import logger from '../utils/logger';
+import { AppError } from '../errors/AppError';
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -8,7 +9,8 @@ const { v4: uuidv4 } = require('uuid');
  *
  * Handles both operational errors (AppError instances) and unexpected errors
  */
-const errorHandler = (err, req, res, next) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const errorHandler = (err: any, req: Request & { oidc?: any; session?: any }, res: Response, next: NextFunction) => {
   // Generate unique request ID for tracking
   const requestId = uuidv4();
 
@@ -18,7 +20,7 @@ const errorHandler = (err, req, res, next) => {
   const message = err.message || 'An unexpected error occurred';
 
   // Build error context for logging
-  const errorContext = {
+  const errorContext: any = {
     requestId,
     method: req.method,
     url: req.originalUrl,
@@ -47,7 +49,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Build response object
-  const errorResponse = {
+  const errorResponse: any = {
     success: false,
     error: {
       message: message,
@@ -81,8 +83,8 @@ const errorHandler = (err, req, res, next) => {
  * 404 handler for unmatched routes
  * Should be registered BEFORE the error handler but AFTER all valid routes
  */
-const notFoundHandler = (req, res, next) => {
-  const NotFoundError = require('../errors/AppError').NotFoundError;
+const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
+  const { NotFoundError } = require('../errors/AppError') as typeof import('../errors/AppError');
   next(new NotFoundError(`Route ${req.method} ${req.originalUrl} not found`));
 };
 

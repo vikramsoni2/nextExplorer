@@ -28,9 +28,25 @@ const overrideEnv = (values) => {
 
 const modulePath = (relative) => path.join(REPO_ROOT, relative);
 
+const resolveModule = (relative) => {
+  const base = modulePath(relative);
+  const candidates = [base, `${base}.js`, `${base}.ts`];
+  for (const candidate of candidates) {
+    try {
+      return require.resolve(candidate);
+    } catch (error) {
+      if (error.code !== 'MODULE_NOT_FOUND') {
+        throw error;
+      }
+    }
+  }
+  // Fall back to Node's default resolution (will throw if not found)
+  return require.resolve(base);
+};
+
 const clearModuleCache = (moduleSource) => {
   try {
-    const resolved = require.resolve(modulePath(moduleSource));
+    const resolved = resolveModule(moduleSource);
     delete require.cache[resolved];
   } catch (error) {
     if (error.code !== 'MODULE_NOT_FOUND') {
@@ -77,7 +93,8 @@ const setupTestEnv = async ({ tag, modules = [], env = {} } = {}) => {
     },
     requireFresh: (moduleSource) => {
       clearModuleCache(moduleSource);
-      return require(modulePath(moduleSource));
+      const resolved = resolveModule(moduleSource);
+      return require(resolved);
     },
   };
 };

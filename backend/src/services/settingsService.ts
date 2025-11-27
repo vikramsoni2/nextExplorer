@@ -1,20 +1,50 @@
 const storage = require('./storage/jsonStorage');
 const { normalizeRelativePath } = require('../utils/pathUtils');
 
+export type AccessPermission = 'rw' | 'ro' | 'hidden';
+
+export interface ThumbnailSettings {
+  enabled: boolean;
+  size: number;
+  quality: number;
+  concurrency: number;
+}
+
+export interface AccessRule {
+  id: string;
+  path: string;
+  recursive: boolean;
+  permissions: AccessPermission;
+}
+
+export interface Settings {
+  thumbnails: ThumbnailSettings;
+  access: {
+    rules: AccessRule[];
+  };
+}
+
+export type PartialSettings = {
+  thumbnails?: Partial<ThumbnailSettings>;
+  access?: {
+    rules?: AccessRule[];
+  };
+};
+
 /**
  * Sanitize thumbnail settings
  */
-const sanitizeThumbnails = (thumbnails = {}) => {
+const sanitizeThumbnails = (thumbnails: Partial<ThumbnailSettings> | undefined = {}): ThumbnailSettings => {
   return {
     enabled: typeof thumbnails.enabled === 'boolean' ? thumbnails.enabled : true,
-    size: Number.isFinite(thumbnails.size)
-      ? Math.max(64, Math.min(1024, Math.floor(thumbnails.size)))
+    size: Number.isFinite(thumbnails.size as number)
+      ? Math.max(64, Math.min(1024, Math.floor((thumbnails.size as number) || 0)))
       : 200,
-    quality: Number.isFinite(thumbnails.quality)
-      ? Math.max(1, Math.min(100, Math.floor(thumbnails.quality)))
+    quality: Number.isFinite(thumbnails.quality as number)
+      ? Math.max(1, Math.min(100, Math.floor((thumbnails.quality as number) || 0)))
       : 70,
-    concurrency: Number.isFinite(thumbnails.concurrency)
-      ? Math.max(1, Math.min(50, Math.floor(thumbnails.concurrency)))
+    concurrency: Number.isFinite(thumbnails.concurrency as number)
+      ? Math.max(1, Math.min(50, Math.floor((thumbnails.concurrency as number) || 0)))
       : 10,
   };
 };
@@ -22,7 +52,7 @@ const sanitizeThumbnails = (thumbnails = {}) => {
 /**
  * Sanitize access control rules
  */
-const sanitizeAccessRules = (rules = []) => {
+const sanitizeAccessRules = (rules: unknown = []): AccessRule[] => {
   if (!Array.isArray(rules)) return [];
   
   return rules
@@ -40,24 +70,24 @@ const sanitizeAccessRules = (rules = []) => {
       if (!normalizedPath) return null;
       
       // Validate permissions
-      const permissions = ['rw', 'ro', 'hidden'].includes(rule.permissions) 
-        ? rule.permissions 
+      const permissions: AccessPermission = ['rw', 'ro', 'hidden'].includes((rule as any).permissions) 
+        ? (rule as any).permissions 
         : 'rw';
       
       return {
-        id: rule.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id: (rule as any).id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         path: normalizedPath,
-        recursive: Boolean(rule.recursive),
+        recursive: Boolean((rule as any).recursive),
         permissions,
       };
     })
-    .filter(Boolean);
+    .filter(Boolean) as AccessRule[];
 };
 
 /**
  * Sanitize complete settings object
  */
-const sanitize = (settings) => {
+const sanitize = (settings: PartialSettings): Settings => {
   return {
     thumbnails: sanitizeThumbnails(settings?.thumbnails),
     access: {
@@ -69,19 +99,19 @@ const sanitize = (settings) => {
 /**
  * Get current settings
  */
-const getSettings = async () => {
+const getSettings = async (): Promise<Settings> => {
   const data = await storage.get();
-  return data.settings || {
+  return data.settings || ({
     thumbnails: { enabled: true, size: 200, quality: 70, concurrency: 10 },
     access: { rules: [] },
-  };
+  } as Settings);
 };
 
 /**
  * Update settings with partial data
  * Deep merges with existing settings
  */
-const setSettings = async (partial) => {
+const setSettings = async (partial: PartialSettings): Promise<Settings> => {
   const current = await getSettings();
   
   // Deep merge
@@ -106,10 +136,18 @@ const setSettings = async (partial) => {
 /**
  * Update settings with an updater function
  */
-const updateSettings = async (updater) => {
+const updateSettings = async (
+  updater: ((current: Settings) => PartialSettings | Settings) | undefined,
+): Promise<Settings> => {
   const current = await getSettings();
   const next = typeof updater === 'function' ? updater(current) : current;
   return setSettings(next);
+};
+
+export {
+  getSettings, 
+  setSettings, 
+  updateSettings,
 };
 
 module.exports = { 

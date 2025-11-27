@@ -1,5 +1,11 @@
+export interface TrustProxySetting {
+  set: boolean;
+  value: any;
+  message?: string;
+}
+
 // Returns: { set: boolean, value: any, message?: string }
-function getTrustProxySetting() {
+export function getTrustProxySetting(): TrustProxySetting {
   const trustProxy = process.env.TRUST_PROXY?.trim().toLowerCase();
   const publicUrl = process.env.PUBLIC_URL?.trim();
 

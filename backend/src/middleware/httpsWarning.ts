@@ -1,13 +1,14 @@
+import type { Express, NextFunction, Request, Response } from 'express';
 const logger = require('../utils/logger');
 
 /**
  * One-time warning middleware for HTTPS detection
  * Warns operators when HTTPS is detected to ensure proper configuration
  */
-const configureHttpsWarning = (app) => {
+const configureHttpsWarning = (app: Express): void => {
   let warnedInsecureOverHttps = false;
   
-  app.use((req, _res, next) => {
+  app.use((req: Request, _res: Response, next: NextFunction) => {
     try {
       const isHttps = req.secure || 
         (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim() === 'https';

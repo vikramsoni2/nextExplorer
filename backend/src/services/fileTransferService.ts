@@ -1,16 +1,19 @@
-const path = require('path');
-const fs = require('fs/promises');
+import path from 'path';
+import fs from 'fs/promises';
 
-const { ensureDir, pathExists } = require('../utils/fsUtils');
-const {
+import { ensureDir, pathExists } from '../utils/fsUtils';
+import {
   normalizeRelativePath,
   resolveVolumePath,
   resolveItemPaths,
   combineRelativePath,
   findAvailableName,
-} = require('../utils/pathUtils');
+  PathItem,
+} from '../utils/pathUtils';
 
-const copyEntry = async (sourcePath, destinationPath, isDirectory) => {
+type TransferOperation = 'copy' | 'move';
+
+const copyEntry = async (sourcePath: string, destinationPath: string, isDirectory: boolean): Promise<void> => {
   if (isDirectory) {
     if (typeof fs.cp === 'function') {
       await fs.cp(sourcePath, destinationPath, {
@@ -33,10 +36,10 @@ const copyEntry = async (sourcePath, destinationPath, isDirectory) => {
   }
 };
 
-const moveEntry = async (sourcePath, destinationPath, isDirectory) => {
+const moveEntry = async (sourcePath: string, destinationPath: string, isDirectory: boolean): Promise<void> => {
   try {
     await fs.rename(sourcePath, destinationPath);
-  } catch (error) {
+  } catch (error: any) {
     if (error.code === 'EXDEV') {
       await copyEntry(sourcePath, destinationPath, isDirectory);
       await fs.rm(sourcePath, { recursive: isDirectory, force: true });
@@ -46,7 +49,22 @@ const moveEntry = async (sourcePath, destinationPath, isDirectory) => {
   }
 };
 
-const transferItems = async (items, destination, operation) => {
+export interface TransferResultItem {
+  from: string;
+  to: string;
+  skipped?: boolean;
+}
+
+export interface TransferResult {
+  destination: string;
+  items: TransferResultItem[];
+}
+
+const transferItems = async (
+  items: PathItem[],
+  destination: string,
+  operation: TransferOperation,
+): Promise<TransferResult> => {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('At least one item is required.');
   }
@@ -61,7 +79,7 @@ const transferItems = async (items, destination, operation) => {
   const destinationAbsolute = resolveVolumePath(destinationRelative);
   await ensureDir(destinationAbsolute);
 
-  const results = [];
+  const results: TransferResultItem[] = [];
 
   for (const item of items) {
     const { relativePath: sourceRelative, absolutePath: sourceAbsolute } = resolveItemPaths(item);
@@ -96,12 +114,17 @@ const transferItems = async (items, destination, operation) => {
   return { destination: destinationRelative, items: results };
 };
 
-const deleteItems = async (items = []) => {
+export interface DeleteResultItem {
+  path: string;
+  status: 'missing' | 'deleted';
+}
+
+const deleteItems = async (items: PathItem[] = []): Promise<DeleteResultItem[]> => {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('At least one item is required.');
   }
 
-  const results = [];
+  const results: DeleteResultItem[] = [];
 
   for (const item of items) {
     const { relativePath, absolutePath } = resolveItemPaths(item);
@@ -117,6 +140,8 @@ const deleteItems = async (items = []) => {
 
   return results;
 };
+
+export { transferItems, deleteItems };
 
 module.exports = {
   transferItems,

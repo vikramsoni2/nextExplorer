@@ -1,8 +1,9 @@
+import type { Express } from 'express';
 const pinoHttp = require('pino-http');
 const { logging } = require('../config/index');
 const logger = require('../utils/logger');
 
-const configureHttpLogging = (app) => {
+const configureHttpLogging = (app: Express): void => {
   if (!logging.enableHttpLogging) {
     logger.debug('HTTP logging is disabled');
     return;

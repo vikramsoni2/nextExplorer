@@ -2,8 +2,12 @@
  * Base Application Error class
  * All custom errors should extend this class
  */
-class AppError extends Error {
-  constructor(message, statusCode = 500) {
+export class AppError extends Error {
+  statusCode: number;
+  isOperational: boolean;
+  timestamp: string;
+
+  constructor(message: string, statusCode = 500) {
     super(message);
 
     this.statusCode = statusCode;
@@ -14,11 +18,11 @@ class AppError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 
-  toJSON() {
+  toJSON(): { message: string; statusCode: number; timestamp: string } {
     return {
       message: this.message,
       statusCode: this.statusCode,
-      timestamp: this.timestamp
+      timestamp: this.timestamp,
     };
   }
 }
@@ -26,17 +30,19 @@ class AppError extends Error {
 /**
  * 400 Bad Request - for validation errors
  */
-class ValidationError extends AppError {
-  constructor(message = 'Validation failed', details = null) {
+export class ValidationError extends AppError {
+  details: unknown;
+
+  constructor(message = 'Validation failed', details: unknown = null) {
     super(message, 400);
     this.name = 'ValidationError';
     this.details = details;
   }
 
-  toJSON() {
+  toJSON(): ReturnType<AppError['toJSON']> & { details: unknown } {
     return {
       ...super.toJSON(),
-      details: this.details
+      details: this.details,
     };
   }
 }
@@ -44,7 +50,7 @@ class ValidationError extends AppError {
 /**
  * 401 Unauthorized - for authentication errors
  */
-class UnauthorizedError extends AppError {
+export class UnauthorizedError extends AppError {
   constructor(message = 'Authentication required') {
     super(message, 401);
     this.name = 'UnauthorizedError';
@@ -54,7 +60,7 @@ class UnauthorizedError extends AppError {
 /**
  * 403 Forbidden - for authorization/permission errors
  */
-class ForbiddenError extends AppError {
+export class ForbiddenError extends AppError {
   constructor(message = 'Access denied') {
     super(message, 403);
     this.name = 'ForbiddenError';
@@ -64,7 +70,7 @@ class ForbiddenError extends AppError {
 /**
  * 404 Not Found - for missing resources
  */
-class NotFoundError extends AppError {
+export class NotFoundError extends AppError {
   constructor(message = 'Resource not found') {
     super(message, 404);
     this.name = 'NotFoundError';
@@ -74,7 +80,7 @@ class NotFoundError extends AppError {
 /**
  * 409 Conflict - for resource conflicts
  */
-class ConflictError extends AppError {
+export class ConflictError extends AppError {
   constructor(message = 'Resource conflict') {
     super(message, 409);
     this.name = 'ConflictError';
@@ -84,15 +90,17 @@ class ConflictError extends AppError {
 /**
  * 429 Too Many Requests - for rate limiting
  */
-class RateLimitError extends AppError {
-  constructor(message = 'Too many requests', retryAfter = null) {
+export class RateLimitError extends AppError {
+  retryAfter: string | number | null;
+
+  constructor(message = 'Too many requests', retryAfter: string | number | null = null) {
     super(message, 429);
     this.name = 'RateLimitError';
     this.retryAfter = retryAfter;
   }
 
-  toJSON() {
-    const json = super.toJSON();
+  toJSON(): ReturnType<AppError['toJSON']> & { retryAfter?: string | number | null } {
+    const json = super.toJSON() as any;
     if (this.retryAfter) {
       json.retryAfter = this.retryAfter;
     }
@@ -103,7 +111,7 @@ class RateLimitError extends AppError {
 /**
  * 500 Internal Server Error - for unexpected server errors
  */
-class InternalError extends AppError {
+export class InternalError extends AppError {
   constructor(message = 'Internal server error') {
     super(message, 500);
     this.name = 'InternalError';
@@ -113,7 +121,7 @@ class InternalError extends AppError {
 /**
  * 415 Unsupported Media Type - for unsupported file types
  */
-class UnsupportedMediaTypeError extends AppError {
+export class UnsupportedMediaTypeError extends AppError {
   constructor(message = 'Unsupported media type') {
     super(message, 415);
     this.name = 'UnsupportedMediaTypeError';
@@ -129,5 +137,5 @@ module.exports = {
   ConflictError,
   RateLimitError,
   InternalError,
-  UnsupportedMediaTypeError
+  UnsupportedMediaTypeError,
 };

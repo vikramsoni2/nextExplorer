@@ -1,7 +1,8 @@
+import type { NextFunction, Request, Response } from 'express';
 const { getRequestUser } = require('../services/users');
 const { auth } = require('../config/index');
 
-const authMiddleware = async (req, res, next) => {
+const authMiddleware = async (req: Request & { user?: any; oidc?: any; session?: any }, res: Response, next: NextFunction) => {
   const requestPath = req.path || '';
   const apiRoute = requestPath.startsWith('/api');
   const isAuthRoute = requestPath.startsWith('/api/auth');

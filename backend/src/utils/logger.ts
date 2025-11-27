@@ -1,5 +1,5 @@
-const pino = require('pino');
-const loggingConfig = require('../config/logging');
+import pino from 'pino';
+import loggingConfig from '../config/logging';
 
 const logger = pino({
   level: loggingConfig.level,
@@ -18,4 +18,5 @@ const logger = pino({
 
 logger.debug({ level: loggingConfig.level }, 'Logger initialized');
 
+export default logger;
 module.exports = logger;

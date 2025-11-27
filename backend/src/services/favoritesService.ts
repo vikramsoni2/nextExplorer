@@ -1,21 +1,46 @@
-const fs = require('fs/promises');
-const crypto = require('crypto');
+import fs from 'fs/promises';
+import crypto from 'crypto';
 const { getDb } = require('./db');
-const { normalizeRelativePath, resolveVolumePath } = require('../utils/pathUtils');
-const config = require('../config');
+import { normalizeRelativePath, resolveVolumePath } from '../utils/pathUtils';
+import config from '../config';
 
-const DEFAULT_FAVORITE_ICON = config.favorites.defaultIcon;
+const DEFAULT_FAVORITE_ICON: string = config.favorites.defaultIcon;
 
-const generateId = () => (
+const generateId = (): string => (
   typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}-${crypto.randomBytes(8).toString('hex')}`
 );
 
+export interface FavoriteInput {
+  path: string;
+  label?: string | null;
+  icon?: string | null;
+  color?: string | null;
+}
+
+export interface FavoriteRecord extends FavoriteInput {
+  id: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface FavoriteRow {
+  id: string;
+  path: string;
+  label: string | null;
+  icon: string | null;
+  color: string | null;
+  position?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Validate and sanitize a favorite
  */
-const sanitize = (favorite) => {
+const sanitize = (favorite: Partial<FavoriteInput> | null | undefined): FavoriteInput | null => {
   if (!favorite?.path) return null;
 
   try {
@@ -36,7 +61,7 @@ const sanitize = (favorite) => {
 /**
  * Map a database favorite row to API shape
  */
-const mapDbFavorite = (row) => ({
+const mapDbFavorite = (row: FavoriteRow): FavoriteRecord => ({
   id: row.id,
   path: row.path,
   label: row.label,
@@ -50,7 +75,7 @@ const mapDbFavorite = (row) => ({
 /**
  * Ensure a user id is present
  */
-const ensureUserId = (userId) => {
+const ensureUserId = (userId: string | null | undefined): string => {
   if (!userId) {
     throw new Error('User ID is required');
   }
@@ -60,7 +85,7 @@ const ensureUserId = (userId) => {
 /**
  * Get the next position for a user's favorites
  */
-const getNextFavoritePosition = (db, userId) => {
+const getNextFavoritePosition = (db: any, userId: string): number => {
   const row = db.prepare(`
     SELECT COALESCE(MAX(position), -1) AS maxPos
     FROM favorites
@@ -74,12 +99,12 @@ const getNextFavoritePosition = (db, userId) => {
 /**
  * Ensure path exists and is a directory
  */
-const validatePath = async (relativePath) => {
+const validatePath = async (relativePath: string): Promise<void> => {
   const absolutePath = resolveVolumePath(relativePath);
   const stats = await fs.stat(absolutePath);
 
   if (!stats.isDirectory()) {
-    const err = new Error('Path must be a directory');
+    const err: any = new Error('Path must be a directory');
     err.status = 400;
     throw err;
   }
@@ -88,7 +113,7 @@ const validatePath = async (relativePath) => {
 /**
  * Get all favorites for a user
  */
-const getFavorites = async (userId) => {
+const getFavorites = async (userId: string): Promise<FavoriteRecord[]> => {
   ensureUserId(userId);
 
   const db = await getDb();
@@ -105,12 +130,15 @@ const getFavorites = async (userId) => {
 /**
  * Add or update a favorite for a user
  */
-const addFavorite = async (userId, { path, label, icon, color }) => {
+const addFavorite = async (
+  userId: string,
+  { path, label, icon, color }: FavoriteInput,
+): Promise<FavoriteRecord> => {
   ensureUserId(userId);
 
   const favorite = sanitize({ path, label, icon, color });
   if (!favorite) {
-    const err = new Error('Invalid path');
+    const err: any = new Error('Invalid path');
     err.status = 400;
     throw err;
   }
@@ -144,7 +172,7 @@ const addFavorite = async (userId, { path, label, icon, color }) => {
 /**
  * Remove a favorite for a user
  */
-const removeFavorite = async (userId, path) => {
+const removeFavorite = async (userId: string, path: string): Promise<FavoriteRecord[]> => {
   ensureUserId(userId);
 
   const normalizedPath = normalizeRelativePath(path);
@@ -161,14 +189,18 @@ const removeFavorite = async (userId, path) => {
 /**
  * Update a favorite's label or icon
  */
-const updateFavorite = async (userId, favoriteId, updates) => {
+const updateFavorite = async (
+  userId: string,
+  favoriteId: string,
+  updates: Partial<FavoriteInput & { position: number }>,
+): Promise<FavoriteRecord> => {
   ensureUserId(userId);
 
   const db = await getDb();
   const now = new Date().toISOString();
 
-  const fields = [];
-  const values = [];
+  const fields: string[] = [];
+  const values: (string | number | null)[] = [];
 
   if (updates.label !== undefined) {
     fields.push('label = ?');
@@ -192,7 +224,7 @@ const updateFavorite = async (userId, favoriteId, updates) => {
   }
 
   if (fields.length === 0) {
-    const err = new Error('No fields to update');
+    const err: any = new Error('No fields to update');
     err.status = 400;
     throw err;
   }
@@ -209,7 +241,7 @@ const updateFavorite = async (userId, favoriteId, updates) => {
   `).run(...values);
 
   if (result.changes === 0) {
-    const err = new Error('Favorite not found');
+    const err: any = new Error('Favorite not found');
     err.status = 404;
     throw err;
   }
@@ -227,11 +259,11 @@ const updateFavorite = async (userId, favoriteId, updates) => {
  * Reorder favorites for a user
  * Expects an array of favorite IDs in the desired order.
  */
-const reorderFavorites = async (userId, orderedIds) => {
+const reorderFavorites = async (userId: string, orderedIds: string[]): Promise<FavoriteRecord[]> => {
   ensureUserId(userId);
 
   if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
-    const err = new Error('Order must be a non-empty array');
+    const err: any = new Error('Order must be a non-empty array');
     err.status = 400;
     throw err;
   }
@@ -247,7 +279,7 @@ const reorderFavorites = async (userId, orderedIds) => {
   const existingIds = existing.map(row => row.id);
 
   if (existingIds.length !== orderedIds.length) {
-    const err = new Error('Order must include all favorites');
+    const err: any = new Error('Order must include all favorites');
     err.status = 400;
     throw err;
   }
@@ -257,12 +289,12 @@ const reorderFavorites = async (userId, orderedIds) => {
 
   for (const id of orderedIds) {
     if (typeof id !== 'string' || !id) {
-      const err = new Error('Order must contain valid favorite IDs');
+      const err: any = new Error('Order must contain valid favorite IDs');
       err.status = 400;
       throw err;
     }
     if (!existingSet.has(id)) {
-      const err = new Error('Order contains unknown favorite ID');
+      const err: any = new Error('Order contains unknown favorite ID');
       err.status = 400;
       throw err;
     }
@@ -270,7 +302,7 @@ const reorderFavorites = async (userId, orderedIds) => {
   }
 
   if (uniqueOrderedIds.size !== orderedIds.length) {
-    const err = new Error('Order must not contain duplicate IDs');
+    const err: any = new Error('Order must not contain duplicate IDs');
     err.status = 400;
     throw err;
   }
@@ -297,6 +329,14 @@ const reorderFavorites = async (userId, orderedIds) => {
   `).all(userId);
 
   return rows.map(mapDbFavorite);
+};
+
+export {
+  getFavorites,
+  addFavorite,
+  removeFavorite,
+  updateFavorite,
+  reorderFavorites,
 };
 
 module.exports = {
