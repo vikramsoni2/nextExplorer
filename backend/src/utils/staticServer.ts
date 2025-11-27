@@ -13,7 +13,9 @@ const configureStaticFiles = (app) => {
   logger.debug('Mounted /static/thumbnails');
 
   // Serve frontend SPA
-  const frontendDir = path.resolve(__dirname, '..', 'public');
+  // Note: We resolve from the process working directory so this works
+  // both when running source directly and when running compiled code from dist/.
+  const frontendDir = path.resolve(process.cwd(), 'public');
   const indexFile = path.join(frontendDir, 'index.html');
 
   if (fs.existsSync(frontendDir) && fs.existsSync(indexFile)) {

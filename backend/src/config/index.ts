@@ -1,12 +1,81 @@
-const path = require('path');
-const crypto = require('crypto');
-const env = require('./env');
-const constants = require('./constants');
-const loggingConfig = require('./logging');
-const { parseByteSize } = require('../utils/env');
+import path from 'path';
+import crypto from 'crypto';
+import env from './env';
+import * as constants from './constants';
+import loggingConfig from './logging';
+import { parseByteSize } from '../utils/env';
+
+type EnvConfig = typeof env;
+
+type Nullable<T> = T | null;
+
+type CorsConfig =
+  | { allowAll: true; origins: string[] }
+  | { allowAll: false; origins: string[] };
+
+export interface AuthConfig {
+  enabled: boolean;
+  sessionSecret: string;
+  mode: 'local' | 'oidc' | 'both' | 'disabled';
+  oidc: {
+    enabled: EnvConfig['OIDC_ENABLED'];
+    issuer: EnvConfig['OIDC_ISSUER'];
+    authorizationURL: EnvConfig['OIDC_AUTHORIZATION_URL'];
+    tokenURL: EnvConfig['OIDC_TOKEN_URL'];
+    userInfoURL: EnvConfig['OIDC_USERINFO_URL'];
+    clientId: EnvConfig['OIDC_CLIENT_ID'];
+    clientSecret: EnvConfig['OIDC_CLIENT_SECRET'];
+    callbackUrl: Nullable<string>;
+    scopes: Nullable<string[]>;
+    adminGroups: Nullable<string[]>;
+    requireEmailVerified: boolean;
+  };
+}
+
+export interface Config {
+  port: number;
+  directories: {
+    volume: string;
+    volumeWithSep: string;
+    config: string;
+    cache: string;
+    thumbnails: string;
+    extensions: string;
+  };
+  files: { passwordConfig: string };
+  public: { url: Nullable<string>; origin: Nullable<string> };
+  extensions: {
+    images: string[];
+    videos: string[];
+    documents: string[];
+    previewable: Set<string>;
+  };
+  excludedFiles: string[];
+  mimeTypes: Record<string, string>;
+  corsOptions: Record<string, unknown>;
+  auth: AuthConfig;
+  search: {
+    deep: boolean;
+    ripgrep: boolean;
+    maxFileSize: Nullable<string>;
+    maxFileSizeBytes: number;
+  };
+  thumbnails: { size: number; quality: number };
+  onlyoffice: {
+    serverUrl: Nullable<string>;
+    secret: string;
+    lang: string;
+    forceSave: boolean;
+    extensions: string[];
+  };
+  editor: { extensions: string[] };
+  favorites: { defaultIcon: string };
+  features: { volumeUsage: boolean };
+  logging: typeof loggingConfig;
+}
 
 // Helper: Parse comma/space-separated scopes
-const parseScopes = (raw) => {
+const parseScopes = (raw: string | null | undefined): Nullable<string[]> => {
   if (!raw) return null;
   const parts = raw.includes(',') ? raw.split(',') : raw.split(/\s+/);
   return parts.map(s => s.trim()).filter(Boolean);
@@ -17,7 +86,7 @@ const volumeDir = path.resolve(env.VOLUME_ROOT);
 const configDir = path.resolve(env.CONFIG_DIR);
 const cacheDir = path.resolve(env.CACHE_DIR);
 
-const directories = {
+const directories: Config['directories'] = {
   volume: volumeDir,
   volumeWithSep: volumeDir.endsWith(path.sep) ? volumeDir : `${volumeDir}${path.sep}`,
   config: configDir,
@@ -27,8 +96,8 @@ const directories = {
 };
 
 // --- Public URL ---
-let publicUrl = null;
-let publicOrigin = null;
+let publicUrl: Nullable<string> = null;
+let publicOrigin: Nullable<string> = null;
 if (env.PUBLIC_URL) {
   try {
     const url = new URL(env.PUBLIC_URL);
@@ -40,7 +109,7 @@ if (env.PUBLIC_URL) {
 }
 
 // --- CORS ---
-const buildCorsConfig = () => {
+const buildCorsConfig = (): CorsConfig => {
   if (env.CORS_ORIGINS) {
     if (env.CORS_ORIGINS === '*') return { allowAll: true, origins: [] };
     return { allowAll: false, origins: env.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean) };
@@ -51,7 +120,7 @@ const buildCorsConfig = () => {
 
 const corsConfig = buildCorsConfig();
 const corsOptions = {
-  origin: (origin, callback) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     if (corsConfig.allowAll || !origin || corsConfig.origins.includes(origin)) {
       callback(null, true);
     } else {
@@ -66,21 +135,21 @@ const corsOptions = {
 // --- Auth ---
 // Determine auth mode: 'local', 'oidc', 'both', or 'disabled'
 // If AUTH_MODE is not set, fall back to legacy behavior based on OIDC_ENABLED
-const determineAuthMode = () => {
+const determineAuthMode = (): AuthConfig['mode'] => {
   if (env.AUTH_MODE) {
-    const validModes = ['local', 'oidc', 'both', 'disabled'];
-    if (!validModes.includes(env.AUTH_MODE)) {
+    const validModes: AuthConfig['mode'][] = ['local', 'oidc', 'both', 'disabled'];
+    if (!validModes.includes(env.AUTH_MODE as AuthConfig['mode'])) {
       console.warn(`[Config] Invalid AUTH_MODE="${env.AUTH_MODE}". Using "both" as default.`);
       return 'both';
     }
-    return env.AUTH_MODE;
+    return env.AUTH_MODE as AuthConfig['mode'];
   }
   return 'both';
 };
 
 const authMode = determineAuthMode();
 
-const auth = {
+const auth: AuthConfig = {
   enabled: authMode === 'disabled' ? false : (env.AUTH_ENABLED !== false),
   sessionSecret: env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
   mode: authMode,
@@ -102,7 +171,7 @@ const auth = {
 // --- Search ---
 const searchMaxFileSizeBytes = (() => {
   const parsed = parseByteSize(env.SEARCH_MAX_FILESIZE);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5 * 1024 * 1024;
+  return typeof parsed === 'number' && Number.isFinite(parsed) && parsed > 0 ? parsed : 5 * 1024 * 1024;
 })();
 
 // --- OnlyOffice ---
@@ -125,7 +194,7 @@ const favorites = {
 };
 
 // --- Main Export ---
-module.exports = {
+const config: Config = {
   port: env.PORT,
   directories,
   
@@ -170,3 +239,6 @@ module.exports = {
     enableHttpLogging: loggingConfig.enableHttpLogging,
   },
 };
+
+export default config;
+module.exports = config;

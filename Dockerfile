@@ -2,12 +2,15 @@ FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS base
 
 WORKDIR /app
 
-# Backend dependencies (production only)
-FROM base AS backend_deps
-ENV NODE_ENV=production
+FROM base AS backend_build
+ENV NODE_ENV=development
 WORKDIR /app
 COPY backend/package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
+COPY backend/tsconfig.json ./tsconfig.json
+COPY backend/src ./src
+RUN npm run build \
+  && npm prune --omit=dev
 
 # Frontend build (needs dev dependencies)
 FROM base AS frontend_build
@@ -42,13 +45,13 @@ ENV GIT_BRANCH=${GIT_BRANCH}
 ENV REPO_URL=${REPO_URL}
 
 # Bring in the backend source and production dependencies.
-COPY --from=backend_deps /app/node_modules ./node_modules
-COPY --from=backend_deps /app/package.json ./
-COPY backend/src ./src
+COPY --from=backend_build /app/node_modules ./node_modules
+COPY --from=backend_build /app/package.json ./
+COPY --from=backend_build /app/dist ./
 
 # Copy the built frontend assets only.
-RUN mkdir -p src/public
-COPY --from=frontend_build /app/frontend/dist/ ./src/public/
+RUN mkdir -p public
+COPY --from=frontend_build /app/frontend/dist/ ./public/
 
 # Bootstrap entrypoint script responsible for dynamic user mapping.
 COPY entrypoint.sh /usr/local/bin/
