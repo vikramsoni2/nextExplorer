@@ -1,12 +1,67 @@
+import type { Request } from 'express';
+import type { Session, SessionData } from 'express-session';
+
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
 const { getDb } = require('./db');
 const { auth: envAuthConfig } = require('../config/index');
 
-const nowIso = () => new Date().toISOString();
+type Role = string;
 
-const toClientUser = (row) => {
+type HttpError = Error & { status?: number; until?: string | null };
+
+export interface ClientUser {
+  id: string;
+  email: string | null;
+  emailVerified: boolean;
+  username: string | null;
+  displayName: string | null;
+  roles: Role[];
+  createdAt: string | null;
+  updatedAt: string | null;
+  authMethods?: { method: string; provider?: string | null }[];
+}
+
+interface UserRow {
+  id: string;
+  email: string;
+  email_verified: number | boolean;
+  username: string | null;
+  display_name: string | null;
+  roles: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AuthMethodRow {
+  id: string;
+  user_id: string;
+  method_type: 'local_password' | 'oidc' | string;
+  password_hash?: string | null;
+  password_algo?: string | null;
+  provider_issuer?: string | null;
+  provider_sub?: string | null;
+  provider_name?: string | null;
+  enabled?: number | boolean;
+  last_used_at?: string | null;
+  created_at?: string;
+}
+
+interface AuthLockRow {
+  failed_count: number;
+  locked_until: string | null;
+}
+
+type RequestWithAuth = Request & {
+  user?: Partial<ClientUser> & { id?: string };
+  session?: any;
+  oidc?: any;
+};
+
+const nowIso = (): string => new Date().toISOString();
+
+const toClientUser = (row?: UserRow | null): ClientUser | null => {
   if (!row) return null;
   return {
     id: row.id,
@@ -20,53 +75,53 @@ const toClientUser = (row) => {
   };
 };
 
-const generateId = () => (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now().toString(36)}-${crypto.randomBytes(8).toString('hex')}`);
+const generateId = (): string => (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now().toString(36)}-${crypto.randomBytes(8).toString('hex')}`);
 
-const normalizeEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
+const normalizeEmail = (email: unknown): string => (typeof email === 'string' ? email.trim().toLowerCase() : '');
 
 // Lockout policy
 const MAX_FAILED_ATTEMPTS = Number(process.env.AUTH_MAX_FAILED || 5);
 const LOCKOUT_MINUTES = Number(process.env.AUTH_LOCK_MINUTES || 15);
 
-const getLock = async (key) => {
+const getLock = async (key: string): Promise<AuthLockRow> => {
   const db = await getDb();
   return db.prepare('SELECT failed_count, locked_until FROM auth_locks WHERE key = ?').get(key) || { failed_count: 0, locked_until: null };
 };
 
-const setLock = async (key, failedCount, lockedUntil) => {
+const setLock = async (key: string, failedCount: number, lockedUntil: string | null): Promise<void> => {
   const db = await getDb();
   db.prepare('INSERT INTO auth_locks(key, failed_count, locked_until) VALUES(?, ?, ?) ON CONFLICT(key) DO UPDATE SET failed_count = excluded.failed_count, locked_until = excluded.locked_until').run(key, failedCount, lockedUntil);
 };
 
-const clearLock = async (key) => setLock(key, 0, null);
+const clearLock = async (key: string): Promise<void> => setLock(key, 0, null);
 
-const isLocked = async (key) => {
+const isLocked = async (key: string): Promise<boolean> => {
   const row = await getLock(key);
   if (!row.locked_until) return false;
   const until = new Date(row.locked_until).getTime();
   return Number.isFinite(until) && Date.now() < until;
 };
 
-const incrementFailedAttempts = async (key) => {
+const incrementFailedAttempts = async (key: string): Promise<void> => {
   const current = await getLock(key);
   const failed = (Number(current.failed_count) || 0) + 1;
-  let lockedUntil = null;
+  let lockedUntil: string | null = null;
   if (failed >= MAX_FAILED_ATTEMPTS) {
     lockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString();
   }
   await setLock(key, failed, lockedUntil);
 };
 
-const countUsers = async () => {
+const countUsers = async (): Promise<number> => {
   const db = await getDb();
   const row = db.prepare('SELECT COUNT(*) as c FROM users').get();
   return Number(row?.c || 0);
 };
 
 // Count users that currently have the admin role
-const countAdmins = async () => {
+const countAdmins = async (): Promise<number> => {
   const db = await getDb();
-  const rows = db.prepare('SELECT roles FROM users').all();
+  const rows: { roles: string | null }[] = db.prepare('SELECT roles FROM users').all();
   let count = 0;
   for (const r of rows) {
     try {
@@ -77,28 +132,28 @@ const countAdmins = async () => {
   return count;
 };
 
-const getById = async (id) => {
+const getById = async (id: string): Promise<ClientUser | null> => {
   const db = await getDb();
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  const row: UserRow | undefined = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   return toClientUser(row);
 };
 
-const getByEmail = async (email) => {
+const getByEmail = async (email: string): Promise<UserRow | null> => {
   const db = await getDb();
-  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(normalizeEmail(email));
+  const row: UserRow | undefined = db.prepare('SELECT * FROM users WHERE email = ?').get(normalizeEmail(email));
   return row || null;
 };
 
 // Get auth methods for a user
-const getUserAuthMethods = async (userId) => {
+const getUserAuthMethods = async (userId: string): Promise<AuthMethodRow[]> => {
   const db = await getDb();
   return db.prepare('SELECT * FROM auth_methods WHERE user_id = ? AND enabled = 1').all(userId);
 };
 
 // Verify local password for a user
-const verifyLocalPassword = async ({ userId, password }) => {
+const verifyLocalPassword = async ({ userId, password }: { userId: string; password: string }): Promise<boolean> => {
   const db = await getDb();
-  const method = db.prepare(`
+  const method: AuthMethodRow = db.prepare(`
     SELECT * FROM auth_methods
     WHERE user_id = ? AND method_type = 'local_password' AND enabled = 1
   `).get(userId);
@@ -121,7 +176,7 @@ const attemptLocalLogin = async ({ email, password }) => {
   if (await isLocked(normEmail)) {
     const lock = await getLock(normEmail);
     const until = lock.locked_until || null;
-    const err = new Error('Account is temporarily locked due to failed login attempts.');
+    const err = new Error('Account is temporarily locked due to failed login attempts.') as HttpError;
     err.status = 423;
     err.until = until;
     throw err;
@@ -168,13 +223,13 @@ const createLocalUser = async ({ email, password, username, displayName, roles =
   const normEmail = normalizeEmail(email);
 
   if (!normEmail) {
-    const e = new Error('Email is required');
+    const e = new Error('Email is required') as HttpError;
     e.status = 400;
     throw e;
   }
 
   if (!password || password.length < 6) {
-    const e = new Error('Password must be at least 6 characters long');
+    const e = new Error('Password must be at least 6 characters long') as HttpError;
     e.status = 400;
     throw e;
   }
@@ -190,7 +245,7 @@ const createLocalUser = async ({ email, password, username, displayName, roles =
     `).get(user.id);
 
     if (existingAuth) {
-      const e = new Error('User already has local password authentication');
+      const e = new Error('User already has local password authentication') as HttpError;
       e.status = 409;
       throw e;
     }
@@ -238,7 +293,7 @@ const changeLocalPassword = async ({ userId, currentPassword, newPassword }) => 
   const db = await getDb();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (!user) {
-    const e = new Error('User not found.');
+    const e = new Error('User not found.') as HttpError;
     e.status = 404;
     throw e;
   }
@@ -250,19 +305,19 @@ const changeLocalPassword = async ({ userId, currentPassword, newPassword }) => 
   `).get(userId);
 
   if (!authMethod) {
-    const e = new Error('Password change is only allowed for users with password authentication.');
+    const e = new Error('Password change is only allowed for users with password authentication.') as HttpError;
     e.status = 400;
     throw e;
   }
 
   if (typeof newPassword !== 'string' || newPassword.length < 6) {
-    const e = new Error('Password must be at least 6 characters long.');
+    const e = new Error('Password must be at least 6 characters long.') as HttpError;
     e.status = 400;
     throw e;
   }
 
   if (!bcrypt.compareSync(currentPassword || '', authMethod.password_hash)) {
-    const e = new Error('Current password is incorrect.');
+    const e = new Error('Current password is incorrect.') as HttpError;
     e.status = 401;
     throw e;
   }
@@ -277,13 +332,13 @@ const setLocalPasswordAdmin = async ({ userId, newPassword }) => {
   const db = await getDb();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (!user) {
-    const e = new Error('User not found.');
+    const e = new Error('User not found.') as HttpError;
     e.status = 404;
     throw e;
   }
 
   if (typeof newPassword !== 'string' || newPassword.length < 6) {
-    const e = new Error('Password must be at least 6 characters long.');
+    const e = new Error('Password must be at least 6 characters long.') as HttpError;
     e.status = 400;
     throw e;
   }
@@ -316,7 +371,7 @@ const addLocalPassword = async ({ userId, password }) => {
   const db = await getDb();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (!user) {
-    const e = new Error('User not found.');
+    const e = new Error('User not found.') as HttpError;
     e.status = 404;
     throw e;
   }
@@ -328,13 +383,13 @@ const addLocalPassword = async ({ userId, password }) => {
   `).get(userId);
 
   if (existing) {
-    const e = new Error('You already have password authentication.');
+    const e = new Error('You already have password authentication.') as HttpError;
     e.status = 409;
     throw e;
   }
 
   if (!password || password.length < 6) {
-    const e = new Error('Password must be at least 6 characters long.');
+    const e = new Error('Password must be at least 6 characters long.') as HttpError;
     e.status = 400;
     throw e;
   }
@@ -351,12 +406,13 @@ const addLocalPassword = async ({ userId, password }) => {
 };
 
 // Map provider claims/groups to an app roles array
-const deriveRolesFromClaims = (claims = {}, adminGroups = []) => {
+const deriveRolesFromClaims = (claims: Record<string, unknown> = {}, adminGroups: string[] = []) => {
   try {
-    const groups = []
-      .concat(Array.isArray(claims.groups) ? claims.groups : [])
-      .concat(Array.isArray(claims.roles) ? claims.roles : [])
-      .concat(Array.isArray(claims.entitlements) ? claims.entitlements : [])
+    const claimGroups = Array.isArray(claims.groups) ? claims.groups.filter((g): g is string => typeof g === 'string') : [];
+    const claimRoles = Array.isArray(claims.roles) ? claims.roles.filter((g): g is string => typeof g === 'string') : [];
+    const claimEntitlements = Array.isArray(claims.entitlements) ? claims.entitlements.filter((g): g is string => typeof g === 'string') : [];
+
+    const groups = [...claimGroups, ...claimRoles, ...claimEntitlements]
       .filter((g) => typeof g === 'string' && g.trim())
       .map((g) => g.trim().toLowerCase());
 
@@ -515,46 +571,49 @@ const getRequestUser = async (req) => {
   return null;
 };
 
-const listUsers = async () => {
+const listUsers = async (): Promise<ClientUser[]> => {
   const db = await getDb();
   const rows = db.prepare('SELECT * FROM users ORDER BY created_at ASC').all();
 
   const authMethods = db.prepare('SELECT user_id, method_type, provider_name FROM auth_methods WHERE enabled = 1').all();
-  const authMap = {};
+  const authMap: Record<string, { method: string; provider?: string | null }[]> = {};
   for (const am of authMethods) {
     if (!authMap[am.user_id]) authMap[am.user_id] = [];
     authMap[am.user_id].push({ method: am.method_type, provider: am.provider_name });
   }
 
-  return rows.map((r) => {
-    const u = toClientUser(r);
-    u.authMethods = authMap[r.id] || [];
-    return u;
-  });
+  return rows
+    .map((r) => {
+      const u = toClientUser(r);
+      if (!u) return null;
+      u.authMethods = authMap[r.id] || [];
+      return u;
+    })
+    .filter((u): u is ClientUser => Boolean(u));
 };
 
-const updateUserProfile = async ({ userId, email, username, displayName }) => {
+const updateUserProfile = async ({ userId, email, username, displayName }): Promise<ClientUser | null> => {
   const db = await getDb();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (!user) {
-    const err = new Error('User not found.');
+    const err = new Error('User not found.') as HttpError;
     err.status = 404;
     throw err;
   }
 
-  const updates = [];
-  const values = [];
+  const updates: string[] = [];
+  const values: Array<string | null> = [];
 
   if (typeof email === 'string') {
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
-      const err = new Error('Email is required.');
+      const err = new Error('Email is required.') as HttpError;
       err.status = 400;
       throw err;
     }
     const exists = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(normalizedEmail, userId);
     if (exists) {
-      const err = new Error('Email already in use.');
+      const err = new Error('Email already in use.') as HttpError;
       err.status = 409;
       throw err;
     }
@@ -587,7 +646,7 @@ const updateUserProfile = async ({ userId, email, username, displayName }) => {
   return toClientUser(updated);
 };
 
-const updateUserRoles = async ({ userId, roles }) => {
+const updateUserRoles = async ({ userId, roles }): Promise<ClientUser | null> => {
   const db = await getDb();
   const r = Array.isArray(roles) ? roles.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim()) : [];
   const json = JSON.stringify(r);
@@ -609,19 +668,40 @@ const deleteUser = async ({ userId }) => {
     if (Array.isArray(roles) && roles.includes('admin')) {
       const admins = await countAdmins();
       if (admins <= 1) {
-        const e = new Error('Cannot remove the last admin.');
+        const e = new Error('Cannot remove the last admin.') as HttpError;
         e.status = 400;
         throw e;
       }
     }
   } catch (e) {
-    if (e.status === 400) throw e;
+    const err = e as HttpError;
+    if (err.status === 400) throw err;
     /* ignore parse errors */
   }
 
   // Delete user (cascade will delete auth_methods)
   db.prepare('DELETE FROM users WHERE id = ?').run(userId);
   return true;
+};
+
+export {
+  countUsers,
+  countAdmins,
+  getById,
+  getByEmail,
+  getUserAuthMethods,
+  createLocalUser,
+  attemptLocalLogin,
+  changeLocalPassword,
+  setLocalPasswordAdmin,
+  addLocalPassword,
+  getOrCreateOidcUser,
+  getRequestUser,
+  listUsers,
+  updateUserRoles,
+  updateUserProfile,
+  deriveRolesFromClaims,
+  deleteUser,
 };
 
 module.exports = {

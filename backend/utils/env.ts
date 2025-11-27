@@ -1,4 +1,6 @@
-const normalizeBoolean = (value) => {
+export type NormalizedBoolean = boolean | null;
+
+export const normalizeBoolean = (value: unknown): NormalizedBoolean => {
   if (typeof value !== 'string') return null;
   const normalized = value.trim().toLowerCase();
 
@@ -15,7 +17,7 @@ const normalizeBoolean = (value) => {
 
 // Parse sizes like "512", "512k", "10M", "1g" into bytes (number).
 // Supports K, M, G, T suffixes (base 1024). Returns null if cannot parse.
-const parseByteSize = (value) => {
+export const parseByteSize = (value: unknown): number | null => {
   if (value == null) return null;
   if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value));
   if (typeof value !== 'string') return null;
@@ -30,9 +32,4 @@ const parseByteSize = (value) => {
   const pow = unit === 'K' ? 1 : unit === 'M' ? 2 : unit === 'G' ? 3 : unit === 'T' ? 4 : 0;
   const factor = 1024 ** pow;
   return Math.max(0, Math.floor(num * factor));
-};
-
-module.exports = {
-  normalizeBoolean,
-  parseByteSize,
 };

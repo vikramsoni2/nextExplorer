@@ -23,11 +23,12 @@ ENV REPO_URL=${REPO_URL}
 
 # Install backend dependencies first to take advantage of Docker layer caching.
 COPY backend/package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
-# Bring in the backend source and ensure only production dependencies remain.
+# Bring in the backend source, build TypeScript, and ensure only production dependencies remain.
 COPY backend/ ./
-RUN npm prune --omit=dev
+RUN npm run build \
+  && npm prune --omit=dev
 
 # Prepare the frontend build; retain only the generated dist assets.
 WORKDIR /app/frontend
@@ -56,4 +57,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 ENTRYPOINT ["entrypoint.sh"]
-CMD ["node", "app.js"]
+CMD ["node", "dist/app.js"]
