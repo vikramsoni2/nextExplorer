@@ -132,54 +132,41 @@ onClickOutside(languageSwitcherRef, () => {
         <footer class="flex items-center justify-between px-6 py-4 sm:px-12 text-xs text-white/60">
           <div>© {{ new Date().getFullYear() }} NextExplorer</div>
 
-          <div class="flex items-center text-white/70 sm:hidden">
-            <div ref="languageSwitcherRef" class="relative inline-block text-left">
-              <button
-                type="button"
-                class="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 hover:bg-white/10 focus:outline-hidden"
-                :aria-label="t('i18n.language')"
-                @click="languageMenuOpen = !languageMenuOpen"
-              >
-                <span class="uppercase tracking-wide text-[0.7rem]">
+          <div ref="languageSwitcherRef" class="relative inline-flex items-center text-white/70">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 hover:bg-white/10 focus:outline-hidden"
+              :aria-label="t('i18n.language')"
+              @click="languageMenuOpen = !languageMenuOpen"
+            >
+              <span class="flex items-center gap-2">
+                <span
+                  class="rounded-full bg-white/10 px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide"
+                >
                   {{ currentLanguage.code }}
                 </span>
-                <span class="hidden text-xs">
+                <span class="hidden text-xs sm:inline">
                   {{ currentLanguage.label }}
                 </span>
-                <ChevronUpDownIcon class="h-4 w-4 text-white/60" />
-              </button>
+              </span>
+              <ChevronUpDownIcon class="h-4 w-4 text-white/60" />
+            </button>
 
-              <div
-                v-if="languageMenuOpen"
-                class="absolute right-0 bottom-full mb-2 z-20 w-44 rounded-lg border border-white/10 bg-neutral-900/95 py-1 text-xs shadow-lg backdrop-blur-sm"
-              >
-                <button
-                  v-for="lang in languages"
-                  :key="lang.code"
-                  type="button"
-                  class="flex w-full items-center justify-between px-3 py-1.5 hover:bg-white/10"
-                  :class="{ 'font-semibold text-white': locale === lang.code }"
-                  @click="setLocale(lang.code); languageMenuOpen = false"
-                >
-                  <span>{{ lang.label }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="hidden items-center text-white/70 sm:flex">
-            <span class="mr-2">{{ t('i18n.language') }}:</span>
-            <template v-for="(lang, idx) in languages" :key="lang.code">
+            <div
+              v-if="languageMenuOpen"
+              class="absolute right-0 bottom-full mb-2 z-20 w-44 rounded-lg border border-white/10 bg-neutral-900/95 py-1 text-xs shadow-lg backdrop-blur-sm"
+            >
               <button
+                v-for="lang in languages"
+                :key="lang.code"
                 type="button"
-                class="rounded-sm px-2 py-1 hover:bg-white/10"
-                :class="{ 'bg-white/10 font-semibold': locale === lang.code }"
-                @click="setLocale(lang.code)"
+                class="flex w-full items-center justify-between px-3 py-1.5 hover:bg-white/10"
+                :class="{ 'font-semibold text-white': locale === lang.code }"
+                @click="setLocale(lang.code); languageMenuOpen = false"
               >
-                {{ lang.label }}
+                <span>{{ lang.label }}</span>
               </button>
-              <span v-if="idx < languages.length - 1" class="mx-2">•</span>
-            </template>
+            </div>
           </div>
         </footer>
       </div>
