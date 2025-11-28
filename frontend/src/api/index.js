@@ -7,6 +7,7 @@ export { apiBase, buildUrl, normalizePath, encodePath } from './http';
 export * from './files.api';
 export * from './auth.api';
 export * from './users.api';
+export * from './shares.api';
 export * from './favorites.api';
 export * from './settings.api';
 export * from './onlyoffice.api';

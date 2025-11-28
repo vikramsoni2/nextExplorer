@@ -10,6 +10,7 @@ import {
   renameItem as renameItemApi,
   saveFileContent as saveFileContentApi,
   fetchThumbnail as fetchThumbnailApi,
+  browseShare,
 } from '@/api';
 import { useSettingsStore } from '@/stores/settings';
 import { useAppSettings } from '@/stores/appSettings';
@@ -324,9 +325,25 @@ export const useFileStore = defineStore('fileStore', () => {
   }
 
   async function fetchPathItems(path) {
-    const normalizedPath = normalizePath(typeof path === 'string' ? path : currentPath.value);
+    const rawPath = typeof path === 'string' ? path : currentPath.value;
+    const normalizedPath = normalizePath(rawPath);
+    const isSharePath = normalizedPath.startsWith('share/');
+
     currentPath.value = normalizedPath;
     selectedItems.value = [];
+
+    if (isSharePath) {
+      const segments = normalizedPath.split('/').filter(Boolean);
+      const [, shareId, ...inner] = segments; // ['share', id, ...]
+      if (!shareId) {
+        currentPathItems.value = [];
+        return currentPathItems.value;
+      }
+      const innerPath = inner.join('/');
+      currentPathItems.value = await browseShare(shareId, innerPath);
+      return currentPathItems.value;
+    }
+
     currentPathItems.value = await browse(normalizedPath);
     return currentPathItems.value;
   }

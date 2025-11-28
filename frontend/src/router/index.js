@@ -3,6 +3,7 @@ import FolderView from '@/views/FolderView.vue'
 import HomeView from '@/views/HomeView.vue'
 import EditorView from '@/views/EditorView.vue'
 import BrowserLayout from '@/layouts/BrowserLayout.vue'
+import ShareLayout from '@/layouts/ShareLayout.vue'
 import EditorLayout from '@/layouts/EditorLayout.vue'
 import SearchResultsView from '@/views/SearchResultsView.vue'
 import SettingsView from '@/views/settings/SettingsView.vue'
@@ -72,6 +73,11 @@ const router = createRouter({
 
     },
     {
+      path: '/share/:shareId/:path(.*)?',
+      component: ShareLayout,
+      meta: { publicShare: true },
+    },
+    {
       path: '/search',
       component: BrowserLayout,
       meta: { requiresAuth: true },
@@ -129,6 +135,19 @@ router.beforeEach(async (to) => {
     return candidate;
   };
 
+  const isPublicShareRoute = Boolean(to.meta?.publicShare);
+
+  // If already authenticated and hitting a public share URL, use the full browser layout instead.
+  if (auth.isAuthenticated && isPublicShareRoute) {
+    const shareId = to.params.shareId;
+    const extraPath = typeof to.params.path === 'string' && to.params.path
+      ? `/${to.params.path}`
+      : '';
+    return {
+      path: `/browse/share/${shareId}${extraPath}`,
+    };
+  }
+
   if (auth.requiresSetup) {
     if (!isAuthRoute || to.name !== 'auth-setup') {
       const redirect = targetRedirect('/browse/');
@@ -138,7 +157,7 @@ router.beforeEach(async (to) => {
       };
     }
   } else if (!auth.isAuthenticated) {
-    if (!isAuthRoute) {
+    if (!isAuthRoute && !isPublicShareRoute) {
       const redirect = targetRedirect('/browse/');
       return {
         name: 'auth-login',

@@ -32,7 +32,12 @@ export function useNavigation() {
       return;
     }
     if(item.kind==='directory'){
-      const newPath = route.params.path ? `${route.params.path}/${item.name}` : item.name;
+      const rawPathParam = route.params.path;
+      const currentInner = Array.isArray(rawPathParam)
+        ? rawPathParam.join('/')
+        : (rawPathParam || '');
+
+      const newPath = currentInner ? `${currentInner}/${item.name}` : item.name;
       withViewTransition(() => {
         router.push({ path: `/browse/${newPath}` });
       })();
@@ -66,7 +71,6 @@ export function useNavigation() {
   const goUp = withViewTransition(() => {
     const path = decodeURIComponent(router.currentRoute.value.path);
     const segments = path.split('/').slice(2);
-    // console.log(segments);
     if (segments.length > 0) {
       segments.pop();
       router.push({ path: `/browse/${segments.join('/')}` });

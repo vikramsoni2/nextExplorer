@@ -207,6 +207,57 @@ const migrate = (db) => {
       db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run('schema_version', String(4));
       version = 4;
     }
+    if (version < 5) {
+      console.log('[DB Migration] Migrating to v5: Adding shares tables...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS shares (
+          id TEXT PRIMARY KEY,
+          owner_user_id TEXT NOT NULL,
+          -- Normalized logical path of the shared item (e.g. "personal/..." or "some/volume/path")
+          base_path TEXT NOT NULL,
+          -- "file" or "directory"
+          item_type TEXT NOT NULL CHECK(item_type IN ('file','directory')),
+          -- Default access mode for the link: "rw" (editable) or "ro" (read-only)
+          link_mode TEXT NOT NULL CHECK(link_mode IN ('rw','ro')) DEFAULT 'ro',
+          -- Link-level password protection
+          link_requires_password INTEGER NOT NULL DEFAULT 0,
+          link_password_hash TEXT,
+          link_password_salt TEXT,
+          -- Optional link-level expiry, ISO-8601 timestamp (TEXT)
+          link_expires_at TEXT,
+          label TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          last_accessed_at TEXT,
+          FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS share_users (
+          id TEXT PRIMARY KEY,
+          share_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          -- Per-user access mode: "rw" (editable) or "ro" (read-only)
+          access_mode TEXT NOT NULL CHECK(access_mode IN ('rw','ro')) DEFAULT 'ro',
+          -- Optional per-user expiry, ISO-8601 timestamp (TEXT)
+          expires_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (share_id) REFERENCES shares(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_shares_owner ON shares(owner_user_id);
+        CREATE INDEX IF NOT EXISTS idx_shares_base_path ON shares(base_path);
+        CREATE INDEX IF NOT EXISTS idx_shares_expires_at ON shares(link_expires_at);
+        CREATE INDEX IF NOT EXISTS idx_share_users_share ON share_users(share_id);
+        CREATE INDEX IF NOT EXISTS idx_share_users_user ON share_users(user_id);
+      `);
+
+      console.log('[DB Migration] Migration to v5 completed successfully!');
+      db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run('schema_version', String(5));
+      version = 5;
+    }
   })();
 };
 

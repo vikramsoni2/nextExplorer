@@ -31,8 +31,8 @@ const props = defineProps({
 const fileStore = useFileStore();
 const appSettings = useAppSettings();
 
-// Load settings once if needed
-if (!appSettings.loaded && !appSettings.loading) {
+// Load settings once if needed (skip for contexts that disable thumbnails entirely)
+if (!props.disableThumbnails && !appSettings.loaded && !appSettings.loading) {
   appSettings.load();
 }
 

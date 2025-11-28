@@ -61,9 +61,15 @@ useEventListener(window, 'pointerup', () => {
 })
 
 const currentPathName = computed(() => {
-const p = route.params.path;
-const s = Array.isArray(p) ? p.join('/') : (p || '');
-return s.split('/').filter(Boolean).pop() || 'Volumes';
+  const p = route.params.path;
+  const s = Array.isArray(p) ? p.join('/') : (p || '');
+  const lastSegment = s.split('/').filter(Boolean).pop();
+
+  if (typeof s === 'string' && s.startsWith('share/')) {
+    return lastSegment || 'Shared';
+  }
+
+  return lastSegment || 'Volumes';
 });
 useTitle(currentPathName)
 
@@ -71,6 +77,7 @@ useTitle(currentPathName)
 const isVolumesView = computed(() => {
   const p = route.params.path;
   const s = Array.isArray(p) ? p.join('/') : (p || '');
+  if (typeof s === 'string' && s.startsWith('share/')) return false;
   return !s || s.trim() === '';
 });
 

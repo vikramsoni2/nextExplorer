@@ -1,4 +1,5 @@
 <script setup>
+import { defineEmits } from 'vue';
 import NavButtons from '@/components/NavButtons.vue';
 import BreadCrumb from '@/components/BreadCrumb.vue';
 import MenuItemInfo from '@/components/MenuItemInfo.vue';
@@ -11,6 +12,11 @@ import { useSettingsStore } from '@/stores/settings';
 
 const settings = useSettingsStore();
 
+const emit = defineEmits(['share']);
+
+const handleShare = () => {
+  emit('share');
+};
 </script>
 
 <template>
@@ -19,7 +25,7 @@ const settings = useSettingsStore();
       <NavButtons />
       <BreadCrumb class="ml-2"/>
 
-      <MenuItemInfo class="ml-auto"/>
+      <MenuItemInfo class="ml-auto" @share="handleShare" />
       <div class="h-8 w-px mx-1 md:mx-3 bg-neutral-200 dark:bg-neutral-700"></div>
       <MenuSortBy />
       <div class="h-8 w-px mx-1 md:mx-3 bg-neutral-200 dark:bg-neutral-700"></div>

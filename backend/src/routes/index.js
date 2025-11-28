@@ -11,6 +11,7 @@ const settingsRoutes = require('./settings');
 const searchRoutes = require('./search');
 const usersRoutes = require('./users');
 const metadataRoutes = require('./metadata');
+const sharesRoutes = require('./shares');
 const onlyofficeRoutes = require('./onlyoffice');
 const featuresRoutes = require('./features');
 const terminalRoutes = require('./terminal');
@@ -30,6 +31,7 @@ const registerRoutes = (app) => {
   app.use('/api', thumbnailRoutes);
   app.use('/api', searchRoutes);
   app.use('/api', usersRoutes);
+  app.use('/api', sharesRoutes);
   app.use('/api', metadataRoutes);
   app.use('/api', permissionsRoutes);
   // Public features endpoint (always available)

@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { computed, ref, defineEmits } from 'vue';
+import { ArrowDownTrayIcon, TrashIcon, ShareIcon } from '@heroicons/vue/24/outline';
 import { useFileStore } from '@/stores/fileStore';
 import { useFileActions } from '@/composables/fileActions';
 import { normalizePath } from '@/api';
@@ -9,6 +9,8 @@ import { Rename20Regular } from '@vicons/fluent';
 
 const fileStore = useFileStore();
 const actions = useFileActions();
+
+const emit = defineEmits(['share']);
 
 const selectedItems = actions.selectedItems;
 const selectedItem = actions.primaryItem;
@@ -40,6 +42,12 @@ const deleteDialogMessage = computed(() => {
     return `Are you sure you want to delete these ${count} items? This action cannot be undone.`;
   }
   return 'No items selected.';
+});
+
+const canShare = computed(() => {
+  if (!isSingleItemSelected.value || !selectedItem.value) return false;
+  // Do not allow sharing "volume" entries; folders and files are allowed.
+  return selectedItem.value.kind !== 'volume';
 });
 
 const getResolvedPaths = () => selectedItems.value
@@ -101,7 +109,7 @@ const confirmDelete = async () => {
   } catch (error) {
     console.error('Delete operation failed', error);
   } finally {
-    isDeleting.value = false;
+  isDeleting.value = false;
   }
 };
 
@@ -110,6 +118,11 @@ const handleRename = () => {
   const target = selectedItems.value[0];
   if (!target) return;
   fileStore.beginRename(target);
+};
+
+const handleShare = () => {
+  if (!canShare.value) return;
+  emit('share');
 };
 </script>
 
@@ -138,6 +151,18 @@ const handleRename = () => {
       :title="$t('download.download')"
     >
       <ArrowDownTrayIcon class="w-6" />
+    </button>
+    <button
+      type="button"
+      @click="handleShare"
+      :disabled="!canShare"
+      class="p-[6px] rounded-md transition-colors
+        hover:bg-[rgb(239,239,240)] active:bg-zinc-200
+        dark:hover:bg-zinc-700 dark:active:bg-zinc-600"
+      :class="{ 'opacity-50 cursor-default pointer-events-none': !canShare }"
+      :title="$t('share.share')"
+    >
+      <ShareIcon class="w-6" />
     </button>
     <!-- <button
       type="button"

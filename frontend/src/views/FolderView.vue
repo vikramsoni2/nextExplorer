@@ -10,6 +10,7 @@ import { useExplorerContextMenu } from '@/composables/contextMenu';
 import { isPreviewableImage } from '@/config/media';
 import { ImagesOutline } from '@vicons/ionicons5';
 import FolderViewToolbar from '@/components/FolderViewToolbar.vue';
+import ShareDialog from '@/components/ShareDialog.vue';
 import { useViewConfig } from '@/composables/useViewConfig';
 import { DragSelect, DragSelectOption } from '@coleqiu/vue-drag-select';
 import { useUppyDropTarget } from '@/composables/fileUploader';
@@ -24,6 +25,8 @@ const { clearSelection } = useSelection();
 const contextMenu = useExplorerContextMenu();
 const dropTargetRef = ref(null);
 useUppyDropTarget(dropTargetRef);
+
+const isShareDialogOpen = ref(false);
 
 const applySelectionFromQuery = () => {
   const selectName = typeof route.query?.select === 'string' ? route.query.select : '';
@@ -47,7 +50,10 @@ const selectionModel = computed({
 
 const loadFiles = async () => {
   loading.value = true
-  const path = route.params.path || ''
+  const rawPathParam = route.params.path;
+  const path = Array.isArray(rawPathParam)
+    ? rawPathParam.join('/')
+    : (rawPathParam || '');
   try {
     await fileStore.fetchPathItems(path)
     applySelectionFromQuery();
@@ -92,7 +98,7 @@ const showNoPhotosMessage = computed(() => {
   >
     <template v-if="!loading">
       <!-- Toolbar -->
-      <FolderViewToolbar />
+      <FolderViewToolbar @share="isShareDialogOpen = true" />
 
       <DragSelect
         v-model="selectionModel"
@@ -155,6 +161,8 @@ const showNoPhotosMessage = computed(() => {
         </div>
       </div>
     </template>
+
+    <ShareDialog v-model="isShareDialogOpen" />
   </div>
 </template>
 

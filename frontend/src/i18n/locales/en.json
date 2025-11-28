@@ -143,6 +143,26 @@
     "download": "Download",
     "preparing": "Preparing download..."
   },
+  "share": {
+    "share": "Share",
+    "sharingFile": "You are sharing this file.",
+    "sharingFolder": "You are sharing this folder.",
+    "access": "Access",
+    "viewOnly": "View only",
+    "canEdit": "Can edit",
+    "labelOptional": "Label (optional)",
+    "labelPlaceholder": "Add a label to identify this link",
+    "passwordProtect": "Password protect link",
+    "passwordPlaceholder": "Enter a password for this link",
+    "shareWithUsers": "Share with specific users",
+    "loadingUsers": "Loading users…",
+    "link": "Share link",
+    "copyLink": "Copy",
+    "close": "Close",
+    "createLink": "Create link",
+    "updateLink": "Update link",
+    "creating": "Creating…"
+  },
   "upload": {
     "toggleDetailsShow": "Show details",
     "toggleDetailsHide": "Hide details",

@@ -36,6 +36,19 @@ const authMiddleware = async (req, res, next) => {
     return;
   }
 
+  // Allow public share browsing and downloads without authentication
+  if (
+    requestPath.startsWith('/api/share/')
+    && (
+      requestPath.includes('/browse/')
+      || requestPath.includes('/file/')
+      || requestPath.includes('/download')
+    )
+  ) {
+    next();
+    return;
+  }
+
   // Allow ONLYOFFICE server callbacks and file fetches (token-guarded in route)
   // Only when ONLYOFFICE integration is enabled
   let isOnlyofficeGuest = false;
