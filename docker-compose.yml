@@ -19,18 +19,18 @@ services:
       - PUID=1000
       - PGID=1000
       # Centralized public URL (frontend + backend behind proxy)
-      - PUBLIC_URL=https://files.vsoni.com
+      - PUBLIC_URL=http://192.168.1.99:3000
       
       
       # OIDC configuration (fill with your identity provider details)
-      - OIDC_ENABLED=true
-      - OIDC_ISSUER=https://auth.vsoni.com/application/o/next/
-      - OIDC_CLIENT_ID=6HBh3lMneUwWCAeutdEgwNZ6myXzFc93clojdfmQ
-      - OIDC_CLIENT_SECRET=w2ACQfUhhk2vZ14m2GVvYbWqkCQTiXyMsowpLQE2JtiPfaCTrBKhZHwZACgHOCWgSs9zhJW0j8y1TYCrLs0hsMmM0xdIz5tRmce6o4ymVOCQByPRIr9xMxtBt1Spg0I1
-      - OIDC_SCOPES=openid,profile,email,groups
-      - OIDC_ADMIN_GROUPS=next-admin,admins
+      # - OIDC_ENABLED=true
+      # - OIDC_ISSUER=https://auth.vsoni.com/application/o/next/
+      # - OIDC_CLIENT_ID=6HBh3lMneUwWCAeutdEgwNZ6myXzFc93clojdfmQ
+      # - OIDC_CLIENT_SECRET=w2ACQfUhhk2vZ14m2GVvYbWqkCQTiXyMsowpLQE2JtiPfaCTrBKhZHwZACgHOCWgSs9zhJW0j8y1TYCrLs0hsMmM0xdIz5tRmce6o4ymVOCQByPRIr9xMxtBt1Spg0I1
+      # - OIDC_SCOPES=openid,profile,email,groups
+      # - OIDC_ADMIN_GROUPS=next-admin,admins
 
-      - ONLYOFFICE_URL=https://office.vsoni.com
+      - ONLYOFFICE_URL=http://192.168.1.2:7080
       - ONLYOFFICE_SECRET=ha96M546Hl5oSSvrjvabmXK1D6qlRH15
       - ONLYOFFICE_LANG=en
       - ONLYOFFICE_FILE_EXTENSIONS=doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,rtf,txt,pdf

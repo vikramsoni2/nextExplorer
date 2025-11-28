@@ -5,7 +5,8 @@ export default defineConfig({
   title: 'nextExplorer',
   description: 'Modern, self-hosted file explorer',
   themeConfig: {
-    logo: 'images/logo.png',
+    // Logo is served from docs/public/images/logo.png
+    logo: '/images/logo.png',
     search: {
       provider: 'local'
     },
