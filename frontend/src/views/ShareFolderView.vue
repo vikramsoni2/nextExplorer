@@ -68,6 +68,34 @@ const toggleSelection = (item) => {
   }
 };
 
+const selectRange = (item) => {
+  if (!item) return;
+
+  const items = Array.isArray(sortedItems.value) ? sortedItems.value : [];
+  if (items.length === 0) return;
+
+  const targetKey = keyForItem(item);
+  if (!targetKey) return;
+
+  const endIndex = items.findIndex((entry) => keyForItem(entry) === targetKey);
+  if (endIndex === -1) return;
+
+  const anchorKey = selectedKeys.value[selectedKeys.value.length - 1] || targetKey;
+  const startIndex = items.findIndex((entry) => keyForItem(entry) === anchorKey);
+
+  if (startIndex === -1) {
+    selectedKeys.value = [targetKey];
+    return;
+  }
+
+  const [start, end] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
+  const keysInRange = items.slice(start, end + 1)
+    .map((entry) => keyForItem(entry))
+    .filter(Boolean);
+
+  selectedKeys.value = keysInRange;
+};
+
 const clearSelection = () => {
   selectedKeys.value = [];
 };
@@ -144,6 +172,30 @@ const handleDownloadSelected = () => {
   form.submit();
   document.body.removeChild(form);
 };
+
+const handleItemClick = (event, item) => {
+  if (!item) return;
+  const key = keyForItem(item);
+  if (!key) return;
+
+  if (event?.shiftKey && selectedKeys.value.length > 0) {
+    selectRange(item);
+    return;
+  }
+
+  if (event?.ctrlKey || event?.metaKey) {
+    // Toggle selection while preserving existing selection
+    toggleSelection(item);
+    return;
+  }
+
+  // Single selection: replace current selection with this item
+  selectedKeys.value = [key];
+};
+
+const handleItemDblClick = (item) => {
+  handleOpen(item);
+};
 </script>
 
 <template>
@@ -218,41 +270,40 @@ const handleDownloadSelected = () => {
 
       <div v-else class="space-y-1">
         <div
-          class="grid items-center px-3 py-2 text-xs text-neutral-600 dark:text-neutral-300 uppercase tracking-wide select-none bg-white/70 dark:bg-base/70 backdrop-blur-sm sticky top-0 z-10"
-          style="grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);"
+          v-if="viewMode === 'list'"
+          class="grid items-center px-4 py-2 text-xs text-neutral-600 dark:text-neutral-300 uppercase tracking-wide select-none bg-white/80 dark:bg-base/80 backdrop-blur-sm sticky top-0 z-10"
+          style="grid-template-columns: 30px minmax(0, 5fr) minmax(0, 1fr) minmax(0, 2fr);"
         >
-          <div>Name</div>
-          <div>Size</div>
-          <div>Modified</div>
+          <div></div>
+          <div>{{ $t('folder.name') }}</div>
+          <div>{{ $t('folder.size') }}</div>
+          <div>{{ $t('folder.dateModified') }}</div>
         </div>
 
-        <div v-if="viewMode === 'list'" class="divide-y divide-neutral-100 dark:divide-neutral-800">
+        <div v-if="viewMode === 'list'" class="flex flex-col gap-0.5">
           <div
             v-for="item in sortedItems"
             :key="item.name"
-            class="w-full px-3 py-2 grid items-center rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-            style="grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);"
+            class="grid select-none items-center cursor-pointer auto-cols-fr p-1 px-4 rounded-md transition-colors"
+            @click="handleItemClick($event, item)"
+            @dblclick="handleItemDblClick(item)"
+            :class="[
+              'even:bg-zinc-50 dark:even:bg-neutral-800/40',
+              isSelected(item)
+                ? 'text-white dark:text-white bg-blue-500! dark:bg-blue-600/80'
+                : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            ]"
+            style="grid-template-columns: 30px minmax(0, 5fr) minmax(0, 1fr) minmax(0, 2fr);"
           >
-            <div class="pr-2">
-              <input
-                type="checkbox"
-                :checked="isSelected(item)"
-                @change="toggleSelection(item)"
-              />
+            <FileIcon :item="item" :disable-thumbnails="true" class="w-5 h-5 flex-shrink-0" />
+            <div class="break-all text-sm line-clamp-1">
+              {{ item.name }}
             </div>
-            <button
-              type="button"
-              class="flex items-center gap-2 truncate text-left"
-              @click="handleOpen(item)"
-            >
-              <FileIcon :item="item" :disable-thumbnails="true" class="w-5 h-5 flex-shrink-0" />
-              <span class="truncate">{{ item.name }}</span>
-            </button>
-            <div class="text-sm text-neutral-500 dark:text-neutral-400">
+            <div class="text-sm">
               <span v-if="item.kind === 'directory'">—</span>
               <span v-else>{{ formatBytes(item.size) }}</span>
             </div>
-            <div class="text-sm text-neutral-500 dark:text-neutral-400">
+            <div class="text-sm">
               {{ formatDate(item.dateModified) }}
             </div>
           </div>
@@ -262,28 +313,28 @@ const handleDownloadSelected = () => {
           <div
             v-for="item in sortedItems"
             :key="item.name"
-            class="flex flex-col gap-2 p-3 rounded-md border border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
-            :class="{ 'ring-2 ring-blue-500 dark:ring-blue-400': isSelected(item) }"
+            class="flex flex-col items-center gap-2 p-4 rounded-md border border-neutral-100 dark:border-neutral-800 cursor-pointer select-none transition-colors"
+            @click="handleItemClick($event, item)"
+            @dblclick="handleItemDblClick(item)"
+            :class="[
+              isSelected(item)
+                ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-neutral-50 dark:bg-neutral-900'
+                : 'hover:bg-neutral-50 dark:hover:bg-neutral-900'
+            ]"
           >
-            <button
-              type="button"
-              class="flex flex-col items-center gap-2"
-              @click="handleOpen(item)"
+            <FileIcon
+              :item="item"
+              :disable-thumbnails="true"
+              class="h-16 w-16 flex-shrink-0"
+            />
+            <span
+              class="text-xs text-center break-all line-clamp-2 rounded-md px-2 -mx-2"
+              :class="{
+                'bg-blue-500 text-white dark:bg-blue-600': isSelected(item),
+              }"
             >
-              <FileIcon :item="item" :disable-thumbnails="true" class="w-10 h-10" />
-              <span class="text-sm truncate w-full text-center">{{ item.name }}</span>
-            </button>
-            <div class="flex justify-between items-center text-xs text-neutral-500 dark:text-neutral-400">
-              <span>
-                <span v-if="item.kind === 'directory'">Folder</span>
-                <span v-else>{{ formatBytes(item.size) }}</span>
-              </span>
-              <input
-                type="checkbox"
-                :checked="isSelected(item)"
-                @change="toggleSelection(item)"
-              />
-            </div>
+              {{ item.name }}
+            </span>
           </div>
         </div>
       </div>
