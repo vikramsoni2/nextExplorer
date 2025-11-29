@@ -4,6 +4,8 @@ import HomeView from '@/views/HomeView.vue'
 import EditorView from '@/views/EditorView.vue'
 import BrowserLayout from '@/layouts/BrowserLayout.vue'
 import ShareLayout from '@/layouts/ShareLayout.vue'
+import SharedByMeView from '@/views/SharedByMeView.vue'
+import SharedWithMeView from '@/views/SharedWithMeView.vue'
 import EditorLayout from '@/layouts/EditorLayout.vue'
 import SearchResultsView from '@/views/SearchResultsView.vue'
 import SettingsView from '@/views/settings/SettingsView.vue'
@@ -68,6 +70,14 @@ const router = createRouter({
         {
           path: ':path(.+)',
           component: FolderView,
+        },
+        {
+          path: 'shared/by-me',
+          component: SharedByMeView,
+        },
+        {
+          path: 'shared/with-me',
+          component: SharedWithMeView,
         },
       ],
 

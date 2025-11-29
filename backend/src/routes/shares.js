@@ -6,13 +6,14 @@ const archiver = require('archiver');
 
 const { normalizeRelativePath, resolveLogicalPath } = require('../utils/pathUtils');
 const { pathExists } = require('../utils/fsUtils');
-const { excludedFiles, extensions } = require('../config/index');
+const { excludedFiles, extensions, public: publicConfig } = require('../config/index');
 const { getSettings } = require('../services/settingsService');
 const { getPermissionForPath } = require('../services/accessControlService');
 const {
   createShare,
   getShareById,
   listSharesForOwner,
+  listSharesForUser,
   upsertShareUser,
   listShareUsers,
   deleteShareUser,
@@ -138,11 +139,27 @@ router.post('/shares', asyncHandler(async (req, res) => {
     linkExpiresAt,
   });
 
+  const sharePath = `/share/${shareRow.id}/`;
+  const absoluteLink = publicConfig && publicConfig.url
+    ? `${publicConfig.url}${sharePath}`
+    : sharePath;
+
+  logger.info(
+    {
+      shareId: shareRow.id,
+      basePath: shareRow.base_path,
+      sharePath,
+      publicUrl: publicConfig ? publicConfig.url : null,
+      link: absoluteLink,
+    },
+    'Created share and generated link',
+  );
+
   res.status(201).json({
     success: true,
     share: toClientShare(shareRow),
-    // Convenience: link that the UI can show to the user
-    link: `/share/${shareRow.id}/`,
+    // Convenience: absolute link that the UI can show to the user
+    link: absoluteLink,
   });
 }));
 
@@ -152,6 +169,16 @@ router.get('/shares', asyncHandler(async (req, res) => {
   const rows = await listSharesForOwner(user.id);
   res.json({
     shares: rows.map(toClientShare),
+  });
+}));
+
+// List shares shared with current user
+router.get('/shares/with-me', asyncHandler(async (req, res) => {
+  const user = ensureAuth(req);
+  const rows = await listSharesForUser(user.id);
+  res.json({
+    // rows are already mapped by listSharesForUser
+    shares: rows,
   });
 }));
 

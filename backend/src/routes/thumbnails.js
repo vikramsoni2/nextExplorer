@@ -5,6 +5,8 @@ const path = require('path');
 const { normalizeRelativePath, resolveLogicalPath } = require('../utils/pathUtils');
 const { extensions } = require('../config/index');
 const { getThumbnail } = require('../services/thumbnailService');
+const { findShareForPath } = require('../services/shareService');
+const { getById: getUserById } = require('../services/users');
 const logger = require('../utils/logger');
 const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, NotFoundError } = require('../errors/AppError');
@@ -34,7 +36,22 @@ router.get('/thumbnails/*', asyncHandler(async (req, res) => {
 
   let resolved;
   try {
-    resolved = resolveLogicalPath(relativePath, { user: req.user });
+    let userForPath = req.user || null;
+
+    // If this path belongs to a share, resolve it in the context of the share owner
+    try {
+      const share = await findShareForPath(relativePath);
+      if (share && share.owner_user_id) {
+        const ownerUser = await getUserById(share.owner_user_id);
+        if (ownerUser) {
+          userForPath = ownerUser;
+        }
+      }
+    } catch (_) {
+      // If share lookup fails, fall back to the current user
+    }
+
+    resolved = resolveLogicalPath(relativePath, { user: userForPath });
   } catch (error) {
     throw new NotFoundError('File not found.');
   }

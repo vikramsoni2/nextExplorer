@@ -8,6 +8,30 @@ const generateId = () => (
     : `${Date.now().toString(36)}-${crypto.randomBytes(8).toString('hex')}`
 );
 
+// Short, human-friendly share IDs for URLs
+const SHARE_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+const generateShareId = (db) => {
+  const alphabet = SHARE_ID_ALPHABET;
+  const alphabetLength = alphabet.length;
+
+  const randomCode = (length) => {
+    return Array.from({ length }, () => alphabet[Math.floor(Math.random() * alphabetLength)]).join('');
+  };
+
+  // Try short IDs first: 3, then 4, then 5 characters.
+  for (let length = 5; length <= 10; length += 1) {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const code = randomCode(length);
+      const existing = db.prepare('SELECT 1 FROM shares WHERE id = ?').get(code);
+      if (!existing) return code;
+    }
+  }
+
+  // Fallback: if we somehow cannot find a short unique ID, use a full-length one
+  return generateId();
+};
+
 /**
  * Normalize and validate a logical path for sharing.
  * Paths are stored in the same normalized "relative" form used elsewhere,
@@ -73,7 +97,7 @@ const createShare = async ({
   const requiresPassword = linkRequiresPassword ? 1 : 0;
 
   const db = await getDb();
-  const id = generateId();
+  const id = generateShareId(db);
   const now = new Date().toISOString();
 
   db.prepare(`
@@ -319,6 +343,61 @@ const toClientShareUser = (row) => {
   };
 };
 
+/**
+ * Find a share whose base_path matches or is a parent of the given relative path.
+ * Used for resolving shared items (e.g. thumbnails) in the context of the share owner.
+ */
+const findShareForPath = async (relativePath) => {
+  if (!relativePath) return null;
+
+  const db = await getDb();
+  const row = db.prepare(`
+    SELECT *
+    FROM shares
+    WHERE base_path = ?
+       OR (? LIKE base_path || '/%')
+    ORDER BY LENGTH(base_path) DESC
+    LIMIT 1
+  `).get(relativePath, relativePath);
+
+  return row || null;
+};
+
+/**
+ * List shares that are shared with a given user (via share_users).
+ */
+const listSharesForUser = async (userId) => {
+  if (!userId) {
+    const err = new Error('userId is required.');
+    err.status = 400;
+    throw err;
+  }
+
+  const db = await getDb();
+  const rows = db.prepare(`
+    SELECT
+      s.id,
+      s.owner_user_id,
+      s.base_path,
+      s.item_type,
+      s.link_mode,
+      s.link_requires_password,
+      s.link_password_hash,
+      s.link_password_salt,
+      s.link_expires_at,
+      s.label,
+      s.created_at,
+      s.updated_at,
+      s.last_accessed_at
+    FROM shares s
+    INNER JOIN share_users su ON su.share_id = s.id
+    WHERE su.user_id = ?
+    ORDER BY s.created_at DESC
+  `).all(userId);
+
+  return rows.map(toClientShare);
+};
+
 module.exports = {
   createShare,
   getShareById,
@@ -327,6 +406,8 @@ module.exports = {
   listShareUsers,
   deleteShareUser,
   deleteShare,
+  listSharesForUser,
   toClientShare,
   toClientShareUser,
+  findShareForPath,
 };

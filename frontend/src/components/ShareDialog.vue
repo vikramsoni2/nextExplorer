@@ -100,8 +100,12 @@ const handleCreateShare = async () => {
       throw new Error('Share was created but no identifier was returned.');
     }
 
-    // Build absolute link for user convenience
-    shareUrl.value = buildShareLink(share.id);
+    // Prefer backend-provided absolute link; fall back to client-built link
+    if (typeof response?.link === 'string' && response.link.trim()) {
+      shareUrl.value = response.link.trim();
+    } else {
+      shareUrl.value = buildShareLink(share.id);
+    }
 
     const ids = Array.isArray(selectedUserIds.value) ? selectedUserIds.value : [];
     if (ids.length > 0) {
@@ -288,4 +292,3 @@ const handleCopyLink = async () => {
     </div>
   </ModalDialog>
 </template>
-

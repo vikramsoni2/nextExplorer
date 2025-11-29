@@ -3,6 +3,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import HeaderLogo from '@/components/HeaderLogo.vue';
 import FavMenu from '@/components/FavMenu.vue';
 import VolMenu from '@/components/VolMenu.vue';
+import ShareMenu from '@/components/ShareMenu.vue';
 import TerminalMenu from '@/components/TerminalMenu.vue';
 import CreateNew from '@/components/CreateNew.vue';
 import UploadProgress from '@/components/UploadProgress.vue';
@@ -107,6 +108,7 @@ useClipboardShortcuts();
       <div class="overflow-y-scroll -mx-6 px-6 scroll-on-hover">
         <FavMenu/>
         <VolMenu/>
+        <ShareMenu/>
         <TerminalMenu/>
       </div>
       <UserMenu class="mt-auto -mx-4"/>

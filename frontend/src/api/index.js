@@ -13,3 +13,4 @@ export * from './settings.api';
 export * from './onlyoffice.api';
 export * from './features.api';
 export * from './terminal.api';
+export * from './shares-list.api';
