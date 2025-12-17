@@ -1,5 +1,5 @@
 const express = require('express');
-const { onlyoffice, editor, features } = require('../config/index');
+const { onlyoffice, editor, features, downloadPublic } = require('../config/index');
 const packageJson = require('../../package.json');
 
 const router = express.Router();
@@ -25,6 +25,9 @@ router.get('/features', (_req, res) => {
     },
     navigation: {
       skipHome: Boolean(features?.skipHome),
+    },
+    downloads: {
+      publicUrl: downloadPublic?.url || null,
     },
     version: {
       app: packageJson.version || '1.0.0',

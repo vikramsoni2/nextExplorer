@@ -1,8 +1,9 @@
+const http = require('http');
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 
-const { port } = require('./config/index');
+const { port, downloadPort } = require('./config/index');
 const { configureTrustProxy } = require('./middleware/trustProxy');
 const { configureHttpLogging } = require('./middleware/logging');
 const { configureCors } = require('./middleware/cors');
@@ -19,6 +20,7 @@ const terminalService = require('./services/terminalService');
 
 const app = express();
 let server = null;
+let downloadServer = null;
 
 const initializeApp = async () => {
   logger.debug('Application initialization started');
@@ -51,7 +53,8 @@ const initializeApp = async () => {
   app.use(errorHandler);
   logger.debug('Mounted error handling middleware');
 
-  server = app.listen(port, '0.0.0.0', () => {
+  server = http.createServer(app);
+  server.listen(port, '0.0.0.0', () => {
     logger.info({ port }, 'Server is running');
     logger.debug('HTTP server listen callback executed');
   });
@@ -60,11 +63,22 @@ const initializeApp = async () => {
   terminalService.createWebSocketServer(server);
   logger.debug('Terminal WebSocket server initialized');
 
+  if (downloadPort && Number.isFinite(downloadPort) && downloadPort !== port) {
+    downloadServer = http.createServer(app);
+    downloadServer.listen(downloadPort, '0.0.0.0', () => {
+      logger.info({ port: downloadPort }, 'Download server is running');
+    });
+  }
+
   // Cleanup on process termination
   const cleanup = () => {
     logger.info('Shutting down server...');
     terminalService.cleanup();
-    server.close(() => {
+    const closers = [];
+    if (server) closers.push(new Promise((resolve) => server.close(() => resolve())));
+    if (downloadServer) closers.push(new Promise((resolve) => downloadServer.close(() => resolve())));
+
+    Promise.allSettled(closers).finally(() => {
       logger.info('Server closed');
       process.exit(0);
     });
@@ -83,5 +97,8 @@ module.exports = {
   app,
   get server() {
     return server;
+  },
+  get downloadServer() {
+    return downloadServer;
   },
 };

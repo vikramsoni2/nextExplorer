@@ -1,6 +1,8 @@
 import { computed } from 'vue';
 import { useFileStore } from '@/stores/fileStore';
+import { useFeaturesStore } from '@/stores/features';
 import { normalizePath } from '@/api';
+import { buildDownloadAction, submitDownloadForm } from '@/utils/download';
 
 function isEditableElement(el) {
   if (!el) return false;
@@ -19,6 +21,7 @@ function resolveItemPath(item) {
 
 export function useFileActions() {
   const fileStore = useFileStore();
+  const featuresStore = useFeaturesStore();
 
   const selectedItems = computed(() => fileStore.selectedItems);
   const hasSelection = computed(() => fileStore.hasSelection);
@@ -68,32 +71,12 @@ export function useFileActions() {
 
     const currentPath = normalizePath(fileStore.getCurrentPath || '');
 
-    // Create a hidden form to submit the download request
-    // This triggers the browser's native download with progress bar
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/api/download';
-    form.style.display = 'none';
-
-    // Add each path as a separate 'paths' field (form arrays)
-    paths.forEach((path) => {
-      const pathInput = document.createElement('input');
-      pathInput.type = 'hidden';
-      pathInput.name = 'paths';
-      pathInput.value = path;
-      form.appendChild(pathInput);
-    });
-
-    // Add basePath
-    const basePathInput = document.createElement('input');
-    basePathInput.type = 'hidden';
-    basePathInput.name = 'basePath';
-    basePathInput.value = currentPath;
-    form.appendChild(basePathInput);
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+    const action = buildDownloadAction('/api/download', featuresStore.downloadPublicUrl);
+    const fields = [
+      ...paths.map((path) => ({ name: 'paths', value: path })),
+      { name: 'basePath', value: currentPath },
+    ];
+    submitDownloadForm(action, fields);
   };
 
   return {
@@ -123,4 +106,3 @@ export function useFileActions() {
     runDownload,
   };
 }
-

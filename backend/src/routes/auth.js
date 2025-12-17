@@ -94,7 +94,10 @@ router.post('/setup', setupLimiter, asyncHandler(async (req, res) => {
   if (req.session) req.session.localUserId = user.id;
 
   // Clear guest session cookie when user sets up account
-  res.clearCookie('guestSession', { path: '/api' });
+  res.clearCookie('guestSession', {
+    path: '/api',
+    ...(auth?.cookieDomain ? { domain: auth.cookieDomain } : {}),
+  });
 
   res.status(201).json({ user });
 }));
@@ -120,7 +123,10 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   if (req.session) req.session.localUserId = user.id;
 
   // Clear guest session cookie when user logs in
-  res.clearCookie('guestSession', { path: '/api' });
+  res.clearCookie('guestSession', {
+    path: '/api',
+    ...(auth?.cookieDomain ? { domain: auth.cookieDomain } : {}),
+  });
 
   res.json({ user });
 }));

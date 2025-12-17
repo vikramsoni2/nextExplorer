@@ -3,6 +3,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    # Optional: expose backend directly on the host (lets the UI use a separate download origin/port)
+    # ports:
+    #   - "3001:3001"
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
@@ -20,6 +23,8 @@ services:
       - LOG_LEVEL=debug
       - CACHE_DIR=/cache
       - PUBLIC_URL=https://files.vsoni.com
+      # Optional: point the frontend's downloads at a different origin/port than the UI
+      # - DOWNLOAD_PUBLIC_URL=http://localhost:3001
       - SESSION_SECRET=dev-change-me
       
       - OIDC_ENABLED=true
@@ -35,6 +40,7 @@ services:
       
       - USER_DIR_ENABLED=true
       - USER_ROOT=/srv/users
+      
 
       # - OIDC_TOKEN_URL=https://auth.vsoni.com/application/o/token/
       # - OIDC_USERINFO_URL=https://auth.vsoni.com/application/o/userinfo/

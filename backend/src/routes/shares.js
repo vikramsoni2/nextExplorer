@@ -24,7 +24,7 @@ const {
 const { resolveLogicalPath, parsePathSpace } = require('../utils/pathUtils');
 const { pathExists } = require('../utils/fsUtils');
 const { resolvePathWithAccess } = require('../services/accessManager');
-const { extensions } = require('../config/index');
+const { extensions, auth } = require('../config/index');
 const { getSettings } = require('../services/settingsService');
 
 const router = express.Router();
@@ -315,6 +315,7 @@ router.post('/:token/verify', asyncHandler(async (req, res) => {
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: 'lax',
+        ...(auth?.cookieDomain ? { domain: auth.cookieDomain } : {}),
         path: '/api', // Ensure cookie is sent for all /api/* requests
       });
 
@@ -349,6 +350,7 @@ router.post('/:token/verify', asyncHandler(async (req, res) => {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       sameSite: 'lax',
+      ...(auth?.cookieDomain ? { domain: auth.cookieDomain } : {}),
       path: '/api', // Ensure cookie is sent for all /api/* requests
     });
 
@@ -411,6 +413,7 @@ router.get('/:token/access', asyncHandler(async (req, res) => {
           httpOnly: true,
           maxAge: 24 * 60 * 60 * 1000, // 24 hours
           sameSite: 'lax',
+          ...(auth?.cookieDomain ? { domain: auth.cookieDomain } : {}),
           path: '/api', // Ensure cookie is sent for all /api/* requests
         });
 

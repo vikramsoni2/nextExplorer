@@ -5,6 +5,7 @@ import {
   encodePath,
   buildUrl,
 } from './http';
+import { buildDownloadAction } from '@/utils/download';
 
 async function browse(path = '') {
   const normalizedPath = normalizePath(path);
@@ -102,7 +103,7 @@ async function fetchMetadata(relativePath) {
   return requestJson(`/api/metadata/${encodedPath}`, { method: 'GET' });
 }
 
-async function downloadItems(paths, basePath = '') {
+async function downloadItems(paths, basePath = '', downloadBaseUrl = '') {
   const normalizedList = (Array.isArray(paths) ? paths : [paths])
     .map((item) => normalizePath(item))
     .filter(Boolean);
@@ -113,9 +114,17 @@ async function downloadItems(paths, basePath = '') {
 
   const normalizedBase = normalizePath(basePath || '');
 
-  // Use requestRaw as this returns a file blob, not JSON
-  return requestRaw('/api/download', {
+  const guestSessionId = sessionStorage.getItem('guestSessionId');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(guestSessionId ? { 'X-Guest-Session': guestSessionId } : {}),
+  };
+
+  const action = buildDownloadAction('/api/download', downloadBaseUrl);
+  return fetch(action, {
     method: 'POST',
+    credentials: 'include',
+    headers,
     body: JSON.stringify({
       items: normalizedList,
       basePath: normalizedBase,

@@ -7,6 +7,11 @@ const { normalizeBoolean, parseByteSize } = require('../utils/env');
 module.exports = {
   // Server
   PORT: Number(process.env.PORT) || 3000,
+  DOWNLOAD_PORT: (() => {
+    if (!process.env.DOWNLOAD_PORT) return null;
+    const parsed = Number(process.env.DOWNLOAD_PORT);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  })(),
   
   // Paths
   VOLUME_ROOT: process.env.VOLUME_ROOT || '/mnt',
@@ -16,6 +21,7 @@ module.exports = {
   
   // Public URL & Network
   PUBLIC_URL: process.env.PUBLIC_URL?.trim() || null,
+  DOWNLOAD_PUBLIC_URL: process.env.DOWNLOAD_PUBLIC_URL?.trim() || null,
   TRUST_PROXY: process.env.TRUST_PROXY?.trim().toLowerCase(),
   
   // CORS
@@ -30,6 +36,7 @@ module.exports = {
   AUTH_ENABLED: normalizeBoolean(process.env.AUTH_ENABLED),
   AUTH_MODE: process.env.AUTH_MODE?.trim().toLowerCase() || null,
   SESSION_SECRET: process.env.SESSION_SECRET || process.env.AUTH_SESSION_SECRET || null,
+  SESSION_COOKIE_DOMAIN: process.env.SESSION_COOKIE_DOMAIN?.trim() || null,
   AUTH_MAX_FAILED: Number(process.env.AUTH_MAX_FAILED) || 5,
   AUTH_LOCK_MINUTES: Number(process.env.AUTH_LOCK_MINUTES) || 15,
   

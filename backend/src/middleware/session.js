@@ -23,6 +23,7 @@ const configureSession = (app) => {
       httpOnly: true,
       sameSite: 'lax',
       secure: 'auto',
+      ...(envAuthConfig?.cookieDomain ? { domain: envAuthConfig.cookieDomain } : {}),
     },
   }));
 

@@ -44,6 +44,28 @@ if (env.PUBLIC_URL) {
   }
 }
 
+// --- Download Public URL (optional) ---
+let downloadPublicUrl = null;
+let downloadPublicOrigin = null;
+if (env.DOWNLOAD_PUBLIC_URL) {
+  try {
+    const url = new URL(env.DOWNLOAD_PUBLIC_URL);
+    downloadPublicUrl = url.href.replace(/\/$/, '');
+    downloadPublicOrigin = url.origin;
+  } catch (err) {
+    console.warn(`[Config] Invalid DOWNLOAD_PUBLIC_URL: ${env.DOWNLOAD_PUBLIC_URL}`);
+  }
+} else if (env.DOWNLOAD_PORT && publicUrl) {
+  try {
+    const url = new URL(publicUrl);
+    url.port = String(env.DOWNLOAD_PORT);
+    downloadPublicUrl = url.href.replace(/\/$/, '');
+    downloadPublicOrigin = url.origin;
+  } catch (err) {
+    // ignore
+  }
+}
+
 // --- CORS ---
 const buildCorsConfig = () => {
   if (env.CORS_ORIGINS) {
@@ -88,6 +110,7 @@ const authMode = determineAuthMode();
 const auth = {
   enabled: authMode === 'disabled' ? false : (env.AUTH_ENABLED !== false),
   sessionSecret: env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+  cookieDomain: env.SESSION_COOKIE_DOMAIN || null,
   mode: authMode,
   oidc: {
     enabled: env.OIDC_ENABLED ?? null,
@@ -150,6 +173,7 @@ const shares = {
 // --- Main Export ---
 module.exports = {
   port: env.PORT,
+  downloadPort: env.DOWNLOAD_PORT,
   directories,
   
   files: {
@@ -157,6 +181,7 @@ module.exports = {
   },
   
   public: { url: publicUrl, origin: publicOrigin },
+  downloadPublic: { url: downloadPublicUrl, origin: downloadPublicOrigin },
   
   extensions: {
     images: constants.IMAGE_EXTENSIONS,

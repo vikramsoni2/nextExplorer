@@ -234,6 +234,7 @@ const configureOidc = async (app) => {
           sameSite: 'Lax',
           secure: eocCookieSecure,
           httpOnly: true,
+          ...(envAuthConfig?.cookieDomain ? { domain: envAuthConfig.cookieDomain } : {}),
         },
       },
       afterCallback: createAfterCallbackHandler(oidc, envAuthConfig),

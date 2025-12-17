@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - 3000:3000
+      # Optional: expose a separate direct-download port (set DOWNLOAD_PORT too)
+      # - 3001:3001
     volumes:
       - /Users/vikram/projects:/mnt/Projects
       - /Users/vikram/Downloads:/mnt/Downloads
@@ -20,6 +22,12 @@ services:
       - PGID=1000
       # Centralized public URL (frontend + backend behind proxy)
       - PUBLIC_URL=https://files.vsoni.com
+
+      # Optional: separate download port/origin (useful to bypass a slow reverse proxy for /api/download)
+      # - DOWNLOAD_PORT=3001
+      # - DOWNLOAD_PUBLIC_URL=https://files.vsoni.com:3001
+      # If you use a different hostname (e.g. https://downloads.vsoni.com), share cookies across subdomains:
+      # - SESSION_COOKIE_DOMAIN=.vsoni.com
       
       
       # OIDC configuration (fill with your identity provider details)

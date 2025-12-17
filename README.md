@@ -146,6 +146,8 @@ Core
 - `PUBLIC_URL` – the fully qualified base URL where users access the app (e.g., `https://files.example.com`). Used to derive safe defaults for CORS, OIDC callback, and Express proxy trust.
 - `NODE_ENV` – typically `production` for deployments.
 - `PORT` – internal listen port (default `3000`). Usually leave as is and publish a different host port if needed.
+- `DOWNLOAD_PORT` – optional second listen port for direct file downloads (e.g., `3001`). When set, the backend listens on both `PORT` and `DOWNLOAD_PORT`.
+- `DOWNLOAD_PUBLIC_URL` – optional public base URL for downloads (e.g., `https://files.example.com:3001` or `https://downloads.example.com`). If unset and both `PUBLIC_URL` + `DOWNLOAD_PORT` are set, it defaults to `PUBLIC_URL` with the port replaced.
 - `SESSION_SECRET` – optional secret for session encryption. If omitted, a secure random secret is generated at startup. Set to a fixed value for stable sessions across restarts or replicas.
 
 Storage and Volumes
@@ -158,9 +160,11 @@ Security and Networking
 - `LOG_LEVEL` – `info` by default; set `debug` for verbose troubleshooting. Legacy `DEBUG=true` is also supported but prefer `LOG_LEVEL`.
 - `CORS_ORIGINS` – optional comma‑separated allowed origins for cross‑site requests. When `PUBLIC_URL` is set, defaults to that origin; in development, all origins are allowed if unset.
 - `TRUST_PROXY` – proxy trust configuration. When `PUBLIC_URL` is set and `TRUST_PROXY` is not, a safe default of `loopback,uniquelocal` is used. Override with a hop count or explicit CIDR list only if you understand your proxy chain.
+- `SESSION_COOKIE_DOMAIN` – optional cookie domain (e.g., `.example.com`) if you serve the UI and downloads on different subdomains and want the same login cookies to apply to both.
 
 Reverse Proxies
 - If running behind Nginx/Traefik/a load balancer with TLS termination, set `PUBLIC_URL` to the external `https` URL. Cookies receive `Secure`, redirects and CORS are correct, and Express proxy trust is configured safely. Preserve `X‑Forwarded-*` headers in your proxy.
+- If you want to reverse proxy only the UI/API but keep downloads off the proxy, set `DOWNLOAD_PORT` + `DOWNLOAD_PUBLIC_URL` and expose that port directly. Ensure the download URL is also reachable over HTTPS to avoid mixed-content download blocking in modern browsers.
 
 ## Single Sign‑On (OIDC)
 

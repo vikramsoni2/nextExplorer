@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { getPreviewUrl, normalizePath, downloadItems, fetchFileContent } from '@/api';
+import { getPreviewUrl, normalizePath, fetchFileContent } from '@/api';
 import { useFileStore } from '@/stores/fileStore';
+import { useFeaturesStore } from '@/stores/features';
 import router from '@/router';
+import { buildDownloadAction, submitDownloadForm } from '@/utils/download';
 
 export const usePreviewManager = defineStore('preview-manager', () => {
   const plugins = ref([]);
@@ -50,17 +52,16 @@ export const usePreviewManager = defineStore('preview-manager', () => {
     download: async () => {
       const path = getFullPath(item);
       if (!path) return;
-      
-      const response = await downloadItems([path]);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = item.name || 'download';
-      link.click();
-      
-      URL.revokeObjectURL(url);
+
+      const fileStore = useFileStore();
+      const featuresStore = useFeaturesStore();
+      const basePath = normalizePath(fileStore.getCurrentPath || item.path || '');
+      const action = buildDownloadAction('/api/download', featuresStore.downloadPublicUrl);
+      const fields = [
+        { name: 'paths', value: path },
+        { name: 'basePath', value: basePath },
+      ];
+      submitDownloadForm(action, fields);
     },
     close: () => close(),
   });
