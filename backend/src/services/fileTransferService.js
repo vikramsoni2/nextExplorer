@@ -9,6 +9,7 @@ const {
   findAvailableName,
 } = require('../utils/pathUtils');
 const { resolvePathWithAccess } = require('./accessManager');
+const { trashResolvedPath } = require('./trashService');
 
 const copyEntry = async (sourcePath, destinationPath, isDirectory) => {
   if (isDirectory) {
@@ -125,6 +126,7 @@ const deleteItems = async (items = [], options = {}) => {
 
   const results = [];
   const context = { user: options.user || null, guestSession: options.guestSession || null };
+  const useTrash = Boolean(context.user && context.user.id);
 
   for (const item of items) {
     const combined = combineRelativePath(item.path || '', item.name);
@@ -134,7 +136,7 @@ const deleteItems = async (items = [], options = {}) => {
       throw new Error(accessInfo?.denialReason || 'Cannot delete items from this path.');
     }
 
-    const { relativePath, absolutePath } = resolved;
+    const { relativePath, absolutePath, space } = resolved;
 
     if (!(await pathExists(absolutePath))) {
       results.push({ path: relativePath, status: 'missing' });
@@ -142,6 +144,17 @@ const deleteItems = async (items = [], options = {}) => {
     }
 
     const stats = await fs.stat(absolutePath);
+
+    if (useTrash && (space === 'volume' || space === 'personal')) {
+      const trashed = await trashResolvedPath({
+        resolved,
+        name: item.name,
+        context,
+      });
+      results.push({ path: relativePath, status: 'trashed', trashId: trashed.id });
+      continue;
+    }
+
     await fs.rm(absolutePath, { recursive: stats.isDirectory(), force: true });
     results.push({ path: relativePath, status: 'deleted' });
   }

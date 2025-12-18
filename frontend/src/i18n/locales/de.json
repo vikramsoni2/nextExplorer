@@ -65,7 +65,9 @@
     "settings": "Einstellungen",
     "share": "Freigeben",
     "shares": "Freigaben",
-    "unsavedChanges": "Sie haben ungespeicherte Änderungen"
+    "unsavedChanges": "Sie haben ungespeicherte Änderungen",
+    "trash": "Papierkorb",
+    "restore": "Wiederherstellen"
   },
   "status": {
     "updated": "Erfolgreich aktualisiert",
@@ -195,6 +197,15 @@
       "multiple": "Sind Sie sicher, dass Sie diese {count} Elemente löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
       "generic": "Keine Elemente ausgewählt."
     }
+  },
+  "trash": {
+    "empty": "Der Papierkorb ist leer.",
+    "deletedAt": "Gelöscht",
+    "restoring": "Wird wiederhergestellt…",
+    "restored": "Element wiederhergestellt.",
+    "restoredTo": "Wiederhergestellt nach {path}.",
+    "loadFailed": "Papierkorb konnte nicht geladen werden.",
+    "restoreFailed": "Element konnte nicht wiederhergestellt werden."
   },
   "folder": {
     "kind": "Art",

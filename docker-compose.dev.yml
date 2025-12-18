@@ -36,6 +36,10 @@ services:
       - USER_DIR_ENABLED=true
       - USER_ROOT=/srv/users
 
+      # Optional: bootstrap the first local admin (skips setup wizard)
+      - AUTH_ADMIN_EMAIL=admin2@vsoni.com
+      - AUTH_ADMIN_PASSWORD=111222
+
       # - OIDC_TOKEN_URL=https://auth.vsoni.com/application/o/token/
       # - OIDC_USERINFO_URL=https://auth.vsoni.com/application/o/userinfo/
       # - OIDC_AUTHORIZATION_URL=https://auth.vsoni.com/application/o/authorize/

@@ -67,7 +67,9 @@
     "shares": "Shares",
     "unsavedChanges": "You have unsaved changes",
     "readonly": "Read Only",
-    "readwrite": "Read/Write"
+    "readwrite": "Read/Write",
+    "trash": "Trash",
+    "restore": "Restore"
   },
   "status": {
     "updated": "Updated successfully",
@@ -204,6 +206,15 @@
       "multiple": "Are you sure you want to delete these {count} items? This action cannot be undone.",
       "generic": "No items selected."
     }
+  },
+  "trash": {
+    "empty": "Trash is empty.",
+    "deletedAt": "Deleted",
+    "restoring": "Restoring…",
+    "restored": "Item restored.",
+    "restoredTo": "Restored to {path}.",
+    "loadFailed": "Failed to load trash items.",
+    "restoreFailed": "Failed to restore item."
   },
   "folder": {
     "kind": "Kind",

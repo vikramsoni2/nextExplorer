@@ -5,6 +5,7 @@ import FavMenu from '@/components/FavMenu.vue';
 import VolMenu from '@/components/VolMenu.vue';
 import TerminalMenu from '@/components/TerminalMenu.vue';
 import SharesMenu from '@/components/SharesMenu.vue';
+import TrashMenu from '@/components/TrashMenu.vue';
 import UploadProgress from '@/components/UploadProgress.vue';
 import UserMenu from '@/components/UserMenu.vue';
 import NotificationToastContainer from '@/components/NotificationToastContainer.vue';
@@ -130,6 +131,7 @@ const handleGuestLogin = () => {
       <div class="overflow-y-scroll -mx-6 px-6 mt-6 scroll-on-hover">
         <FavMenu v-if="!auth.isGuest" />
         <SharesMenu v-if="!auth.isGuest" />
+        <TrashMenu v-if="!auth.isGuest" />
         <VolMenu v-if="!auth.isGuest" />
         <TerminalMenu/>
       </div>

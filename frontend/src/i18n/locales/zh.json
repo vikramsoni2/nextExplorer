@@ -65,7 +65,9 @@
     "settings": "设置",
     "share": "共享",
     "shares": "共享",
-    "unsavedChanges": "您有未保存的更改"
+    "unsavedChanges": "您有未保存的更改",
+    "trash": "回收站",
+    "restore": "恢复"
   },
   "status": {
     "updated": "更新成功",
@@ -195,6 +197,15 @@
       "multiple": "确定要删除这 {count} 个项目吗？此操作无法撤销。",
       "generic": "未选择任何项目。"
     }
+  },
+  "trash": {
+    "empty": "回收站为空。",
+    "deletedAt": "已删除",
+    "restoring": "正在恢复…",
+    "restored": "已恢复项目。",
+    "restoredTo": "已恢复到 {path}。",
+    "loadFailed": "无法加载回收站。",
+    "restoreFailed": "无法恢复项目。"
   },
   "folder": {
     "kind": "类型",

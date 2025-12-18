@@ -65,7 +65,9 @@
     "settings": "Paramètres",
     "share": "Partager",
     "shares": "Partages",
-    "unsavedChanges": "Vous avez des modifications non enregistrées"
+    "unsavedChanges": "Vous avez des modifications non enregistrées",
+    "trash": "Corbeille",
+    "restore": "Restaurer"
   },
   "status": {
     "updated": "Mis à jour avec succès",
@@ -195,6 +197,15 @@
       "multiple": "Voulez-vous vraiment supprimer ces {count} éléments ? Cette action est irréversible.",
       "generic": "Aucun élément sélectionné."
     }
+  },
+  "trash": {
+    "empty": "La corbeille est vide.",
+    "deletedAt": "Supprimé",
+    "restoring": "Restauration…",
+    "restored": "Élément restauré.",
+    "restoredTo": "Restauré vers {path}.",
+    "loadFailed": "Impossible de charger la corbeille.",
+    "restoreFailed": "Impossible de restaurer l’élément."
   },
   "folder": {
     "kind": "Type",

@@ -65,7 +65,9 @@
     "settings": "Ustawienia",
     "share": "Udostępnij",
     "shares": "Udostępnienia",
-    "unsavedChanges": "Masz niezapisane zmiany"
+    "unsavedChanges": "Masz niezapisane zmiany",
+    "trash": "Kosz",
+    "restore": "Przywróć"
   },
   "status": {
     "updated": "Pomyślnie zaktualizowano",
@@ -195,6 +197,15 @@
       "multiple": "Na pewno chcesz usunąć te {count} elementy? Tej operacji nie można cofnąć.",
       "generic": "Nie wybrano żadnych elementów."
     }
+  },
+  "trash": {
+    "empty": "Kosz jest pusty.",
+    "deletedAt": "Usunięto",
+    "restoring": "Przywracanie…",
+    "restored": "Element przywrócony.",
+    "restoredTo": "Przywrócono do {path}.",
+    "loadFailed": "Nie udało się wczytać kosza.",
+    "restoreFailed": "Nie udało się przywrócić elementu."
   },
   "folder": {
     "kind": "Rodzaj",

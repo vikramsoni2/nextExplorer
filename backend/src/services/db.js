@@ -288,6 +288,36 @@ const migrate = (db) => {
       db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run('schema_version', String(6));
       version = 6;
     }
+    if (version < 7) {
+      console.log('[DB Migration] Migrating to v7: Adding trash (recycle bin) functionality...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS trash_items (
+          id TEXT PRIMARY KEY,
+          deleted_by TEXT NOT NULL,
+          source_path TEXT NOT NULL,
+          source_parent TEXT NOT NULL,
+          source_name TEXT NOT NULL,
+          source_space TEXT NOT NULL CHECK(source_space IN ('volume', 'personal', 'share')),
+          trash_absolute_path TEXT NOT NULL,
+          is_directory INTEGER NOT NULL,
+          size INTEGER,
+          deleted_at TEXT NOT NULL,
+          restored_at TEXT,
+          restored_path TEXT,
+          status TEXT NOT NULL CHECK(status IN ('trashed', 'restored'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_trash_items_deleted_by_status_deleted_at
+          ON trash_items(deleted_by, status, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_trash_items_status
+          ON trash_items(status);
+      `);
+
+      console.log('[DB Migration] Migration to v7 completed successfully!');
+      db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run('schema_version', String(7));
+      version = 7;
+    }
   })();
 };
 

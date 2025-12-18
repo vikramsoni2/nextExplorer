@@ -65,7 +65,9 @@
     "settings": "Inställningar",
     "share": "Utdelning",
     "shares": "Utdelningar",
-    "unsavedChanges": "Du har osparade ändringar"
+    "unsavedChanges": "Du har osparade ändringar",
+    "trash": "Papperskorg",
+    "restore": "Återställ"
   },
   "status": {
     "updated": "Uppdaterades",
@@ -195,6 +197,15 @@
       "multiple": "Är du säker på att du vill radera dessa {count} objekt? Denna åtgärd går inte att ångra.",
       "generic": "Inga objekt valda."
     }
+  },
+  "trash": {
+    "empty": "Papperskorgen är tom.",
+    "deletedAt": "Raderad",
+    "restoring": "Återställer…",
+    "restored": "Objekt återställt.",
+    "restoredTo": "Återställt till {path}.",
+    "loadFailed": "Det gick inte att läsa in papperskorgen.",
+    "restoreFailed": "Det gick inte att återställa objektet."
   },
   "folder": {
     "kind": "Typ",

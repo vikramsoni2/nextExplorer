@@ -65,7 +65,9 @@
     "settings": "Configuración",
     "share": "Compartir",
     "shares": "Compartidos",
-    "unsavedChanges": "Tienes cambios sin guardar"
+    "unsavedChanges": "Tienes cambios sin guardar",
+    "trash": "Papelera",
+    "restore": "Restaurar"
   },
   "status": {
     "updated": "Actualizado correctamente",
@@ -196,6 +198,15 @@
       "multiple": "¿Seguro que quieres eliminar estos {count} elementos? Esta acción no se puede deshacer.",
       "generic": "No hay elementos seleccionados."
     }
+  },
+  "trash": {
+    "empty": "La papelera está vacía.",
+    "deletedAt": "Eliminado",
+    "restoring": "Restaurando…",
+    "restored": "Elemento restaurado.",
+    "restoredTo": "Restaurado en {path}.",
+    "loadFailed": "No se pudo cargar la papelera.",
+    "restoreFailed": "No se pudo restaurar el elemento."
   },
   "folder": {
     "kind": "Tipo",
