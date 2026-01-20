@@ -4,7 +4,7 @@ Thanks for helping improve nextExplorer! This guide keeps contributions smooth, 
 
 ## Ways to Contribute
 - Report bugs and propose features via GitHub Issues.
-- Improve docs and examples in `docs/`.
+- Improve docs and examples in `apps/docs/`.
 - Fix bugs or add focused enhancements.
 
 ## Code Style (Keep It Simple)
@@ -15,13 +15,13 @@ Thanks for helping improve nextExplorer! This guide keeps contributions smooth, 
 - Keep changes focused; one concern per PR.
 
 ## Project Layout
-- `frontend/` – Vue 3 + Vite app (Pinia, TailwindCSS, Vitest, ESLint).
-- `backend/` – Express API (Node 18+, Pino logging, OIDC via express-openid-connect).
-- `docs/` – VitePress docs (site content and guides).
+- `apps/web/` – Vue 3 + Vite app (Pinia, TailwindCSS, Vitest, ESLint).
+- `apps/api/` – Express API (Node 20+, Pino logging, OIDC via express-openid-connect).
+- `apps/docs/` – VitePress docs (site content and guides).
 - `Dockerfile` – Multi-stage build packaging the full app.
 
 ## Prerequisites
-- Node.js 18+ and npm 9+.
+- Node.js 20+ and npm 9+.
 - Docker + Docker Compose v2 (optional, recommended for end-to-end dev).
 - FFmpeg/ffprobe available if running backend outside Docker.
 
@@ -36,16 +36,12 @@ docker compose -f docker-compose.dev.yml up --build
 
 Option B — run services locally in two terminals:
 ```
-# Terminal 1: backend
-cd backend
+# Terminal 1: api
 npm install
-PORT=3001 CONFIG_DIR=$PWD/.config CACHE_DIR=$PWD/.cache 
-npm start
+PORT=3001 CONFIG_DIR=$PWD/apps/api/.config CACHE_DIR=$PWD/apps/api/.cache npm run dev -w apps/api
 
-# Terminal 2: frontend
-cd frontend
-npm install
-VITE_BACKEND_ORIGIN=http://localhost:3001 npm run dev
+# Terminal 2: web
+VITE_BACKEND_ORIGIN=http://localhost:3001 npm run dev -w apps/web
 ```
 
 Environment tips:
@@ -56,15 +52,15 @@ Environment tips:
 ## Tests & Linting
 - Backend tests (Node test runner):
 ```
-cd backend && npm test
+npm test -w apps/api
 ```
 - Frontend unit tests (Vitest):
 ```
-cd frontend && npm run test:unit
+npm run test:unit -w apps/web
 ```
 - Frontend lint (ESLint + vue):
 ```
-cd frontend && npm run lint
+npm run lint -w apps/web
 ```
 
 ## Build
@@ -74,19 +70,19 @@ docker build -t nextexplorer:dev .
 ```
 - Frontend bundle only:
 ```
-cd frontend && npm run build && npm run preview
+npm run build -w apps/web && npm run preview -w apps/web
 ```
 
 ## Pull Requests
 - Keep PRs small and atomic. Describe the problem and the approach.
 - Include tests for new behavior when practical (backend: Node test runner + supertest; frontend: Vitest).
-- Update docs in `docs/` and user-facing `README.md` when behavior or settings change.
+- Update docs in `apps/docs/` and user-facing `README.md` when behavior or settings change.
 - Run tests and linters locally before submitting.
 
 Checklist:
 - [ ] Focused changes; no unrelated diffs
-- [ ] Tests pass locally (`backend`/`frontend`)
-- [ ] Lint passes (`frontend`)
+- [ ] Tests pass locally (`apps/api`/`apps/web`)
+- [ ] Lint passes (`apps/web`)
 - [ ] Docs and examples updated if needed
 
 ## Commit Messages & Branching
@@ -100,9 +96,9 @@ Checklist:
 - Report vulnerabilities privately via GitHub Security Advisories.
 
 ## Where to Look First
-- Backend configuration: `backend/config/index.js`, `backend/config/trustProxy.js`.
-- Logging: `backend/utils/logger.js` (Pino).
-- Auth routes and middleware: `backend/routes/auth.js`, `backend/middleware/authMiddleware.js`.
-- Frontend state and API: `frontend/src/stores/*`, `frontend/src/api/index.js`.
+- Backend configuration: `apps/api/src/config/index.js`, `apps/api/src/config/trustProxy.js`.
+- Logging: `apps/api/src/config/logging.js` (Pino).
+- Auth routes and middleware: `apps/api/src/routes/auth.js`, `apps/api/src/middleware/authMiddleware.js`.
+- Frontend state and API: `apps/web/src/stores/*`, `apps/web/src/api/index.js`.
 
 Thanks again for contributing!

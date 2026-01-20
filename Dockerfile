@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS base
+FROM public.ecr.aws/docker/library/node:20-bookworm-slim AS base
 
 WORKDIR /app
 
@@ -6,17 +6,23 @@ WORKDIR /app
 FROM base AS backend_deps
 ENV NODE_ENV=production
 WORKDIR /app
-COPY backend/package*.json ./
-RUN npm ci --omit=dev
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY apps/docs/package.json apps/docs/package.json
+RUN npm ci --omit=dev --workspace apps/api
 
 # Frontend build (needs dev dependencies)
 FROM base AS frontend_build
 ENV NODE_ENV=development
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build -- --sourcemap false
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY apps/docs/package.json apps/docs/package.json
+RUN npm ci --workspace apps/web
+COPY apps/web ./apps/web
+RUN npm run build -w apps/web -- --sourcemap false
 
 # Final runtime image
 FROM base AS runtime
@@ -43,13 +49,13 @@ ENV REPO_URL=${REPO_URL}
 
 # Bring in the backend source and production dependencies.
 COPY --from=backend_deps /app/node_modules ./node_modules
-COPY --from=backend_deps /app/package.json ./
-COPY backend/src ./src
+COPY apps/api/package.json ./package.json
+COPY apps/api/src ./src
 COPY healthcheck.js ./healthcheck.js
 
 # Copy the built frontend assets only.
 RUN mkdir -p src/public
-COPY --from=frontend_build /app/frontend/dist/ ./src/public/
+COPY --from=frontend_build /app/apps/web/dist/ ./src/public/
 
 # Host checkouts can have restrictive umasks (e.g. 077) resulting in 0600 source files.
 # Ensure the runtime user can always read/traverse the app source tree.

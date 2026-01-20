@@ -1,0 +1,25 @@
+{
+  "name": "nextexplorer",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "packageManager": "npm@10.8.2",
+  "scripts": {
+    "dev": "turbo run dev --parallel --filter=@nextexplorer/api --filter=@nextexplorer/web",
+    "dev:docs": "turbo run dev --filter=@nextexplorer/docs",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "format:check": "turbo run format:check"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.5"
+  },
+  "engines": {
+    "node": ">=20",
+    "npm": ">=9"
+  }
+}

@@ -12,7 +12,7 @@
 
   "prettier.requireConfig": true,
   "prettier.configPath": "./prettier.config.cjs",
-  "prettier.prettierPath": "./frontend/node_modules/prettier",
+  "prettier.prettierPath": "./node_modules/prettier",
 
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"

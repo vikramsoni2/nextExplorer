@@ -1,0 +1,14 @@
+services:
+  dev:
+    # Compose auto-loads `.env` automatically (no `env_file:` needed).
+    # Copy `.env.dev.example` to `.env` to set OIDC/Collabora/etc.
+    volumes:
+      # Mount your real files into the explorer instead of the default Docker volume.
+      # - /path/to/your/files:/mnt/Files
+
+      # Persist config/cache on your host (optional).
+      # - ./config:/config
+      # - ./cache:/cache
+
+      # Host personal folders (optional).
+      # - ./user_vols:/srv/users

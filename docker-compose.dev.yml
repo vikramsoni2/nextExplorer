@@ -1,74 +1,46 @@
 services:
-  backend:
+  dev:
+    env_file:
+      - path: .env
+        required: false
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    volumes:
-      - ./backend:/app
-      - backend_node_modules:/app/node_modules
-      - /Users/vikram/projects:/mnt/Projects
-      - /Users/vikram/Downloads:/mnt/Downloads
-      - /Users/vikram/Pictures:/mnt/Pictures
-      - /Users/vikram/Downloads/config:/config
-      - /Users/vikram/Downloads/cache:/cache
-      - /Users/vikram/Downloads/user_vols:/srv/users
-    # user: "${UID:-1000}:${GID:-1000}"
-    environment:
-      - PORT=3001
-      - VOLUME_ROOT=/mnt
-      - CONFIG_DIR=/config
-      - LOG_LEVEL=debug
-      - CACHE_DIR=/cache
-      - PUBLIC_URL=https://files.vsoni.com
-      - SESSION_SECRET=dev-change-me
-
-      - OIDC_ENABLED=true
-      - OIDC_ISSUER=https://auth.vsoni.com/application/o/next/
-      - OIDC_CLIENT_ID=6HBh3lMneUwWCAeutdEgwNZ6myXzFc93clojdfmQ
-      - OIDC_CLIENT_SECRET=w2ACQfUhhk2vZ14m2GVvYbWqkCQTiXyMsowpLQE2JtiPfaCTrBKhZHwZACgHOCWgSs9zhJW0j8y1TYCrLs0hsMmM0xdIz5tRmce6o4ymVOCQByPRIr9xMxtBt1Spg0I1
-      - OIDC_SCOPES=openid,profile,email,groups
-      - OIDC_ADMIN_GROUPS=next-admin,admins
-
-      # - ONLYOFFICE_URL=https://office.vsoni.com
-      # - ONLYOFFICE_SECRET=ha96M546Hl5oSSvrjvabmXK1D6qlRH15
-      # - ONLYOFFICE_LANG=en
-
-      - COLLABORA_URL=https://collabora.vsoni.com
-      - COLLABORA_DISCOVERY_URL=https://collabora.vsoni.com/hosting/discovery
-      - COLLABORA_SECRET=dev-collabora-secret-change-me
-      # - COLLABORA_LANG=en
-      # - COLLABORA_FILE_EXTENSIONS=doc,docx,xls,xlsx,ppt,pptx,odt,ods,odp,rtf,txt,csv
-
-      - USER_DIR_ENABLED=true
-      - USER_ROOT=/srv/users
-
-      # - OIDC_TOKEN_URL=https://auth.vsoni.com/application/o/token/
-      # - OIDC_USERINFO_URL=https://auth.vsoni.com/application/o/userinfo/
-      # - OIDC_AUTHORIZATION_URL=https://auth.vsoni.com/application/o/authorize/
-      # - OIDC_ISSUER=http://192.168.1.2:8087/realms/next
-      # - OIDC_CLIENT_ID=next-app
-      # - OIDC_CLIENT_SECRET=PpIuYcL8NIshpjDWl3w2H6bwDIhyTjJ4
-      # - OIDC_SCOPES=openid profile email
-      # - OIDC_ADMIN_GROUPS=next-admin admins
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
       - '3000:3000'
     environment:
-      # Vite proxies API requests to the backend container
-      - VITE_BACKEND_ORIGIN=http://backend:3001
-      # Often needed on macOS/Windows for file change detection:
-      - CHOKIDAR_USEPOLLING=1
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-    # user: "${UID:-1000}:${GID:-1000}"
+      # API + web run in the same container via Turborepo (see root `npm run dev`).
+      VITE_BACKEND_ORIGIN: 'http://127.0.0.1:3001'
+      CHOKIDAR_USEPOLLING: '1'
 
-volumes:
-  backend_node_modules:
-  frontend_node_modules:
+      # Backend runtime (safe defaults for local dev)
+      VOLUME_ROOT: '/mnt'
+      CONFIG_DIR: '/config'
+      CACHE_DIR: '/cache'
+      LOG_LEVEL: '${LOG_LEVEL:-debug}'
+      PUBLIC_URL: '${PUBLIC_URL:-http://localhost:3000}'
+      SESSION_SECRET: '${SESSION_SECRET:-dev-change-me}'
+
+      # Optional integrations (set in `.env` or a local override compose file)
+      OIDC_ENABLED: '${OIDC_ENABLED:-false}'
+      OIDC_ISSUER: '${OIDC_ISSUER:-}'
+      OIDC_CLIENT_ID: '${OIDC_CLIENT_ID:-}'
+      OIDC_CLIENT_SECRET: '${OIDC_CLIENT_SECRET:-}'
+      OIDC_SCOPES: '${OIDC_SCOPES:-openid,profile,email}'
+      OIDC_ADMIN_GROUPS: '${OIDC_ADMIN_GROUPS:-}'
+
+      COLLABORA_URL: '${COLLABORA_URL:-}'
+      COLLABORA_DISCOVERY_URL: '${COLLABORA_DISCOVERY_URL:-}'
+      COLLABORA_SECRET: '${COLLABORA_SECRET:-}'
+
+      ONLYOFFICE_URL: '${ONLYOFFICE_URL:-}'
+      ONLYOFFICE_SECRET: '${ONLYOFFICE_SECRET:-}'
+      ONLYOFFICE_LANG: '${ONLYOFFICE_LANG:-en}'
+      ONLYOFFICE_FILE_EXTENSIONS: '${ONLYOFFICE_FILE_EXTENSIONS:-}'
+
+      USER_DIR_ENABLED: '${USER_DIR_ENABLED:-false}'
+      USER_ROOT: '${USER_ROOT:-/srv/users}'
+
+    volumes:
+      # Hot reload the monorepo apps without masking `/app/node_modules` from the image.
+      - ./apps:/app/apps

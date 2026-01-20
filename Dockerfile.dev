@@ -1,0 +1,19 @@
+FROM public.ecr.aws/docker/library/node:20-bookworm
+
+WORKDIR /app
+ENV NODE_ENV=development
+
+# Match the production image's runtime toolchain for parity.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg ripgrep imagemagick curl unzip \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install workspace dependencies once (monorepo).
+COPY package.json package-lock.json turbo.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY apps/docs/package.json apps/docs/package.json
+RUN npm ci
+
+EXPOSE 3000
+CMD ["bash", "-lc", "mkdir -p /mnt/Files /config /cache /srv/users && npm run dev"]

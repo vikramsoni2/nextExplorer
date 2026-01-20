@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/public/images/logo.png" width="96" height="96" alt="nextExplorer logo" />
+  <img src="apps/docs/public/images/logo.png" width="96" height="96" alt="nextExplorer logo" />
 </p>
 
 <h1 align="center">NextExplorer</h1>

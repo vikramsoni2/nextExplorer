@@ -3,25 +3,29 @@
 This document covers local development, testing, and release workflows for nextExplorer. For user-facing deployment instructions, see `README.md`.
 
 ## Project Layout
-- `frontend/` – Vue 3 + Vite SPA (Pinia, TailwindCSS).
-- `backend/` – Express server exposing the file-system API, thumbnail generation, uploads, and terminal bridge.
+- `apps/web/` – Vue 3 + Vite SPA (Pinia, TailwindCSS).
+- `apps/api/` – Express server exposing the file-system API, thumbnail generation, uploads, and terminal bridge.
+- `apps/docs/` – VitePress docs (site content and guides).
 - `Dockerfile` – Multi-stage build that bakes the frontend into the backend image.
-- `docker-compose.yml` – Two-service stack for running frontend and backend with live reload.
-- `docker-compose.fullstack.yml` – Single container that ships the production bundle.
+- `docker-compose.dev.yml` – Two-service stack for running `apps/web` and `apps/api` with live reload.
+- `docker-compose.yml` – Single container stack using the production `Dockerfile`.
 
 ## Prerequisites
-- Node.js 18 or later and npm 9 or later.
+- Node.js 20 or later and npm 9 or later.
 - FFmpeg installed locally (the Docker image installs it automatically).
 - Docker Desktop / Docker Engine + Compose v2 if you plan to build or run containers.
 - macOS/Linux with file-system permissions to mount your working directories under `/mnt`, persistent config under `/config`, and caches under `/cache`.
 
 ## Local Setup
 
+### Install dependencies (repo root)
+```bash
+npm install
+```
+
 ### Backend API
 ```bash
-cd backend
-npm install
-npm start
+npm run dev -w apps/api
 ```
 
 - `npm start` runs `node --watch app.js` to reload automatically on backend changes.
@@ -55,8 +59,7 @@ For backward compatibility with the UI, the wrapper route `GET /api/auth/oidc/lo
 
 ### Frontend SPA
 ```bash
-cd frontend
-npm install
+cd apps/web
 cp .env.example .env  # when using the proxy flow, leave VITE_API_URL unset
 npm run dev
 ```
@@ -72,11 +75,11 @@ npm run dev
   - `npm run test:unit` – Vitest unit suite.
   - `npm run lint` – ESLint with Vue plugin; auto-fixes where possible.
   - `npm run storybook` – component explorer on `http://localhost:6006`.
-  - `npm run build-storybook` – static Storybook build (`frontend/storybook-static/`).
+  - `npm run build-storybook` – static Storybook build (`apps/web/storybook-static/`).
 
 #### Features Store Architecture
 
-The frontend uses a centralized Pinia store (`frontend/src/stores/features.js`) to manage all runtime configuration from Docker environment variables. This provides optimal performance and consistency.
+The frontend uses a centralized Pinia store (`apps/web/src/stores/features.js`) to manage all runtime configuration from Docker environment variables. This provides optimal performance and consistency.
 
 **Key Characteristics**:
 - **Eager initialization**: Features load immediately at app startup (`main.js`) in parallel with other initialization
@@ -122,12 +125,10 @@ Serve the SPA on port 3000 and proxy API calls to the backend on an internal por
 Local (no Docker):
 ```bash
 # Backend on 3001
-cd backend && npm ci
-PORT=3001 VOLUME_ROOT=$PWD/../example-express-openid CONFIG_DIR=$PWD/.config CACHE_DIR=$PWD/.cache npm run start
+PORT=3001 VOLUME_ROOT=$PWD/../example-express-openid CONFIG_DIR=$PWD/.config CACHE_DIR=$PWD/.cache npm run dev -w apps/api
 
 # Frontend on 3000 (proxies /api and /static/thumbnails to 3001)
-cd ../frontend && npm ci
-VITE_BACKEND_ORIGIN=http://localhost:3001 npm run dev
+VITE_BACKEND_ORIGIN=http://localhost:3001 npm run dev -w apps/web
 # Open http://localhost:3000
 ```
 
@@ -135,8 +136,11 @@ Docker (two services, one exposed port):
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
-- Only `http://localhost:3000` is exposed; backend listens on 3001 internally.
-- Update the host volume paths under the `backend` service to match directories you want to expose.
+- Only `http://localhost:3000` is exposed; the API runs on 3001 inside the container and Vite proxies `/api`.
+- To mount host paths or secrets, use an untracked override:
+  `docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up --build`
+
+- To set dev environment variables, copy `.env.dev.example` to `.env` (Compose auto-loads `.env`).
 
 If you run the dev stack behind a local reverse proxy, set `PUBLIC_URL` for the backend to the proxy URL (defaults to `http://localhost:3000` in `docker-compose.dev.yml`). This centralizes:
 - CORS origin (derived from the origin of `PUBLIC_URL` unless `CORS_ORIGINS` is set)
@@ -145,9 +149,9 @@ If you run the dev stack behind a local reverse proxy, set `PUBLIC_URL` for the 
 Note: When using EOC, prefer setting your provider redirect URI to `${PUBLIC_URL}/callback` (the EOC default). The legacy Passport OIDC flow still supports `${PUBLIC_URL}/api/auth/oidc/callback`.
 
 ## Testing & Quality
-- Frontend unit tests: `cd frontend && npm run test:unit`.
-- Frontend lint: `cd frontend && npm run lint` (expect a few legacy warnings that still need cleanup).
-- Backend currently has no automated tests; consider adding Vitest or Jest when introducing new API surface.
+- Frontend unit tests: `npm run test:unit -w apps/web`.
+- Frontend lint: `npm run lint -w apps/web` (expect a few legacy warnings that still need cleanup).
+- Backend tests: `npm test -w apps/api`.
 
 ## Building Production Images
 The multi-stage `Dockerfile` builds the Vue app and packages it with the Node backend.
@@ -171,6 +175,6 @@ docker buildx build \
 
 ## Release Checklist
 - Update `README.md` screenshots or feature descriptions if UX changes.
-- Regenerate the frontend production build (`npm run build`) and smoke-test locally.
+- Regenerate the frontend production build (`npm run build -w apps/web`) and smoke-test locally.
 - Run through critical file operations (upload/move/delete) on a staging instance.
 - Bump Docker tags or package versions as needed and publish release notes.

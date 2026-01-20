@@ -1,0 +1,20 @@
+{
+  "name": "@nextexplorer/docs",
+  "private": true,
+  "version": "0.0.0",
+  "description": "VitePress docs for nextExplorer",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview --host",
+    "docs:dev": "npm run dev",
+    "docs:build": "npm run build",
+    "docs:preview": "npm run preview",
+    "format": "prettier --config ../../prettier.config.cjs --write .",
+    "format:check": "prettier --config ../../prettier.config.cjs --check ."
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}
