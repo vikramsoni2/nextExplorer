@@ -3,13 +3,15 @@
 This document covers local development, testing, and release workflows for nextExplorer. For user-facing deployment instructions, see `README.md`.
 
 ## Project Layout
-- `frontend/` – Vue 3 + Vite SPA (Pinia, TailwindCSS).
-- `backend/` – Express server exposing the file-system API, thumbnail generation, uploads, and terminal bridge.
-- `Dockerfile` – Multi-stage build that bakes the frontend into the backend image.
-- `docker-compose.yml` – Two-service stack for running frontend and backend with live reload.
+
+- `web/` – Vue 3 + Vite SPA (Pinia, TailwindCSS).
+- `api/` – Express server exposing the file-system API, thumbnail generation, uploads, and terminal bridge.
+- `Dockerfile` – Multi-stage build that bakes the frontend into the api image.
+- `docker-compose.yml` – Two-service stack for running frontend and api with live reload.
 - `docker-compose.fullstack.yml` – Single container that ships the production bundle.
 
 ## Prerequisites
+
 - Node.js 18 or later and npm 9 or later.
 - FFmpeg installed locally (the Docker image installs it automatically).
 - Docker Desktop / Docker Engine + Compose v2 if you plan to build or run containers.
@@ -17,14 +19,15 @@ This document covers local development, testing, and release workflows for nextE
 
 ## Local Setup
 
-### Backend API
+### API
+
 ```bash
-cd backend
+cd api
 npm install
 npm start
 ```
 
-- `npm start` runs `node --watch app.js` to reload automatically on backend changes.
+- `npm start` runs `node --watch src/app.js` to reload automatically on api changes.
 - Environment variables:
   - `PORT` (default `3000`)
   - `VOLUME_ROOT` (default `/mnt`)
@@ -37,7 +40,7 @@ npm start
     - `OIDC_ISSUER` – provider issuer URL (Keycloak realm URL, Authentik issuer, Authelia issuer)
     - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET`
     - `OIDC_SCOPES` – e.g. `openid profile email` (add `groups` if your provider supports it)
-    - `SESSION_SECRET` – optional; if omitted the backend generates a strong secret at startup (used for sessions and EOC cookies)
+    - `SESSION_SECRET` – optional; if omitted the api generates a strong secret at startup (used for sessions and EOC cookies)
     - Optional overrides: `OIDC_AUTHORIZATION_URL`, `OIDC_TOKEN_URL`, `OIDC_USERINFO_URL`, `OIDC_CALLBACK_URL`
   - Runtime features (loaded via centralized features store):
     - `EDITOR_EXTENSIONS` – comma-separated list of additional file extensions to support in the inline editor (e.g. `toml,proto,graphql`). These are added to the default list of supported extensions.
@@ -45,17 +48,20 @@ npm start
     - `SKIP_HOME` – when `true`, visits to the home view (`/browse/`) automatically redirect into the first volume instead, avoiding an extra click for single-volume setups.
     - `ONLYOFFICE_URL`, `ONLYOFFICE_FILE_EXTENSIONS` – OnlyOffice integration is also loaded via the features store.
 
-When EOC is enabled, the backend exposes default OIDC routes:
+When EOC is enabled, the api exposes default OIDC routes:
+
 - `GET /login` – start login
 - `GET /callback` – OIDC callback (configure this in your provider)
 - `GET /logout` – logout (IdP logout enabled)
 
 For backward compatibility with the UI, the wrapper route `GET /api/auth/oidc/login` also triggers EOC login when available.
+
 - Ensure the process user can read/write the directories pointed to by `VOLUME_ROOT`, `CONFIG_DIR`, `CACHE_DIR`, and `LOG_DIR`.
 
 ### Frontend SPA
+
 ```bash
-cd frontend
+cd web
 npm install
 cp .env.example .env  # when using the proxy flow, leave VITE_API_URL unset
 npm run dev
@@ -72,25 +78,27 @@ npm run dev
   - `npm run test:unit` – Vitest unit suite.
   - `npm run lint` – ESLint with Vue plugin; auto-fixes where possible.
   - `npm run storybook` – component explorer on `http://localhost:6006`.
-  - `npm run build-storybook` – static Storybook build (`frontend/storybook-static/`).
+  - `npm run build-storybook` – static Storybook build (`web/storybook-static/`).
 
 #### Features Store Architecture
 
-The frontend uses a centralized Pinia store (`frontend/src/stores/features.js`) to manage all runtime configuration from Docker environment variables. This provides optimal performance and consistency.
+The web uses a centralized Pinia store (`web/src/stores/features.js`) to manage all runtime configuration from Docker environment variables. This provides optimal performance and consistency.
 
 **Key Characteristics**:
+
 - **Eager initialization**: Features load immediately at app startup (`main.js`) in parallel with other initialization
 - **Single source of truth**: All components access features through the store, ensuring consistency
 - **Performance optimized**: Only one HTTP request to `/api/features` per app load
 - **Reactive state**: Components automatically update when features load
 
 **Usage in Components**:
+
 ```javascript
 // Async components (wait for features to load)
-import { useFeaturesStore } from '@/stores/features'
+import { useFeaturesStore } from '@/stores/features';
 
-const featuresStore = useFeaturesStore()
-await featuresStore.ensureLoaded()
+const featuresStore = useFeaturesStore();
+await featuresStore.ensureLoaded();
 
 // Now access features
 if (featuresStore.volumeUsageEnabled) {
@@ -100,13 +108,14 @@ if (featuresStore.volumeUsageEnabled) {
 
 ```javascript
 // Reactive computed (automatically updates when features load)
-import { useFeaturesStore } from '@/stores/features'
+import { useFeaturesStore } from '@/stores/features';
 
-const featuresStore = useFeaturesStore()
-const extensions = computed(() => featuresStore.editorExtensions)
+const featuresStore = useFeaturesStore();
+const extensions = computed(() => featuresStore.editorExtensions);
 ```
 
 **Available Features**:
+
 - `editorExtensions` – array of custom file extensions from `EDITOR_EXTENSIONS`
 - `onlyofficeEnabled` – boolean from `ONLYOFFICE_URL`
 - `onlyofficeExtensions` – array from `ONLYOFFICE_FILE_EXTENSIONS`
@@ -114,50 +123,59 @@ const extensions = computed(() => featuresStore.editorExtensions)
 - `personalEnabled` – boolean from `USER_DIR_ENABLED`
 - `skipHome` – boolean from `SKIP_HOME`
 
-**Backend API**: Features are served by `GET /api/features` which consolidates all runtime configuration from environment variables.
+**API**: Features are served by `GET /api/features` which consolidates all runtime configuration from environment variables.
 
 ### Single-port Dev via Vite proxy (recommended)
-Serve the SPA on port 3000 and proxy API calls to the backend on an internal port 3001.
+
+Serve the SPA on port 3000 and proxy API calls to the api on an internal port 3001.
 
 Local (no Docker):
+
 ```bash
-# Backend on 3001
-cd backend && npm ci
+# API on 3001
+cd api && npm ci
 PORT=3001 VOLUME_ROOT=$PWD/../example-express-openid CONFIG_DIR=$PWD/.config CACHE_DIR=$PWD/.cache npm run start
 
-# Frontend on 3000 (proxies /api and /static/thumbnails to 3001)
-cd ../frontend && npm ci
+# web on 3000 (proxies /api and /static/thumbnails to 3001)
+cd ../web && npm ci
 VITE_BACKEND_ORIGIN=http://localhost:3001 npm run dev
 # Open http://localhost:3000
 ```
 
 Docker (two services, one exposed port):
+
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
-- Only `http://localhost:3000` is exposed; backend listens on 3001 internally.
-- Update the host volume paths under the `backend` service to match directories you want to expose.
 
-If you run the dev stack behind a local reverse proxy, set `PUBLIC_URL` for the backend to the proxy URL (defaults to `http://localhost:3000` in `docker-compose.dev.yml`). This centralizes:
+- Only `http://localhost:3000` is exposed; api listens on 3001 internally.
+- Update the host volume paths under the `api` service to match directories you want to expose.
+
+If you run the dev stack behind a local reverse proxy, set `PUBLIC_URL` for the api to the proxy URL (defaults to `http://localhost:3000` in `docker-compose.dev.yml`). This centralizes:
+
 - CORS origin (derived from the origin of `PUBLIC_URL` unless `CORS_ORIGINS` is set)
 - OIDC callback URL (defaults to `PUBLIC_URL + /api/auth/oidc/callback` unless `OIDC_CALLBACK_URL` is set)
 
 Note: When using EOC, prefer setting your provider redirect URI to `${PUBLIC_URL}/callback` (the EOC default). The legacy Passport OIDC flow still supports `${PUBLIC_URL}/api/auth/oidc/callback`.
 
 ## Testing & Quality
-- Frontend unit tests: `cd frontend && npm run test:unit`.
-- Frontend lint: `cd frontend && npm run lint` (expect a few legacy warnings that still need cleanup).
-- Backend currently has no automated tests; consider adding Vitest or Jest when introducing new API surface.
+
+- web unit tests: `cd web && npm run test:unit`.
+- web lint: `cd web && npm run lint` (expect a few legacy warnings that still need cleanup).
+- API tests: `cd api && npm test`.
 
 ## Building Production Images
-The multi-stage `Dockerfile` builds the Vue app and packages it with the Node backend.
+
+The multi-stage `Dockerfile` builds the Vue app and packages it with the Node api.
 
 ### Local build
+
 ```bash
 docker build -t nextexplorer:dev .
 ```
 
 ### Multi-architecture build & push
+
 ```bash
 docker buildx create --use --name multi || docker buildx use multi
 # Install QEMU binfmt for cross-compilation (one-time per host)
@@ -170,6 +188,7 @@ docker buildx build \
 ```
 
 ## Release Checklist
+
 - Update `README.md` screenshots or feature descriptions if UX changes.
 - Regenerate the frontend production build (`npm run build`) and smoke-test locally.
 - Run through critical file operations (upload/move/delete) on a staging instance.

@@ -2,20 +2,20 @@ FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS base
 
 WORKDIR /app
 
-# Backend dependencies (production only)
-FROM base AS backend_deps
+# API dependencies (production only)
+FROM base AS api_deps
 ENV NODE_ENV=production
 WORKDIR /app
-COPY backend/package*.json ./
+COPY api/package*.json ./
 RUN npm ci --omit=dev
 
 # Frontend build (needs dev dependencies)
-FROM base AS frontend_build
+FROM base AS web_build
 ENV NODE_ENV=development
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
+WORKDIR /app/web
+COPY web/package*.json ./
 RUN npm ci
-COPY frontend/ ./
+COPY web/ ./
 RUN npm run build -- --sourcemap false
 
 # Final runtime image
@@ -33,7 +33,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Make git metadata available at runtime for backend /api/features endpoint
+# Make git metadata available at runtime for API /api/features endpoint
 ARG GIT_COMMIT=""
 ARG GIT_BRANCH=""
 ARG REPO_URL=""
@@ -41,15 +41,15 @@ ENV GIT_COMMIT=${GIT_COMMIT}
 ENV GIT_BRANCH=${GIT_BRANCH}
 ENV REPO_URL=${REPO_URL}
 
-# Bring in the backend source and production dependencies.
-COPY --from=backend_deps /app/node_modules ./node_modules
-COPY --from=backend_deps /app/package.json ./
-COPY backend/src ./src
+# Bring in the API source and production dependencies.
+COPY --from=api_deps /app/node_modules ./node_modules
+COPY --from=api_deps /app/package.json ./
+COPY api/src ./src
 COPY healthcheck.js ./healthcheck.js
 
-# Copy the built frontend assets only.
+# Copy the built web assets only.
 RUN mkdir -p src/public
-COPY --from=frontend_build /app/frontend/dist/ ./src/public/
+COPY --from=web_build /app/web/dist/ ./src/public/
 
 # Host checkouts can have restrictive umasks (e.g. 077) resulting in 0600 source files.
 # Ensure the runtime user can always read/traverse the app source tree.

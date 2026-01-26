@@ -39,7 +39,7 @@ services:
 ## Volume strategy
 
 - **Each `/mnt/Label` mount becomes a sidebar volume.** Give folders human-friendly labels to avoid confusion, e.g., `/mnt/Projects`, `/mnt/Media`.
-- **`/config`:** Stores the SQLite database, `app-config.json`, and any installed extensions/themes (see `backend/src/config/env.js` for how `CONFIG_DIR` can be overridden). Back this folder up before upgrades.
+- **`/config`:** Stores the SQLite database, `app-config.json`, and any installed extensions/themes (see `api/src/config/env.js` for how `CONFIG_DIR` can be overridden). Back this folder up before upgrades.
 - **`/cache`:** Holds thumbnails, ripgrep indexes, and other ephemeral state; deleting it is safe but will trigger regrowth.
 - **Permission tip:** The entrypoint chown’s `/config` and `/cache` to the container user (default `1000:1000`). Override with `PUID`/`PGID` for custom ownership.
 

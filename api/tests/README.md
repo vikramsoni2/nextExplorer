@@ -1,4 +1,4 @@
-# Backend Test Suites
+# API Test Suites
 
 ## Layout
 
@@ -19,8 +19,8 @@ Keep file names aligned with the code under test (e.g., `services/settings.test.
 ## Running the Suite
 
 ```sh
-cd backend
+cd api
 npm test
 ```
 
-`npm test` executes all files under `backend/tests` via `node --test`. The suite already applies SQLite migrations before each run, so expect a brief migration phase at the start of the output.
+`npm test` executes all files under `api/tests` via `node --test`. The suite already applies SQLite migrations before each run, so expect a brief migration phase at the start of the output.

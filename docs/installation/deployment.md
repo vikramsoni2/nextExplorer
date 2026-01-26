@@ -45,7 +45,7 @@ services:
       - /srv/nextexplorer/users:/srv/nextexplorer/users
 ```
 
-- `PUBLIC_URL` informs the backend's cookie settings, CORS, and default OIDC callback (see `backend/src/config/env.js`).
+- `PUBLIC_URL` informs the backend's cookie settings, CORS, and default OIDC callback (see `api/src/config/env.js`).
 - `SESSION_SECRET` ensures sessions persist across restarts; without it, the app generates a random secret each time.
 - Optional first-run bootstrap: set `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` to auto-create the first local admin on startup (skips the setup wizard).
 
@@ -68,5 +68,5 @@ docker compose up -d
 
 ## Monitoring & logs
 
-- Use `LOG_LEVEL`, `DEBUG`, and `ENABLE_HTTP_LOGGING` (from `backend/src/config/env.js`) to tune logging verbosity.
+- Use `LOG_LEVEL`, `DEBUG`, and `ENABLE_HTTP_LOGGING` (from `api/src/config/env.js`) to tune logging verbosity.
 - The container writes logs to stdout/stderr; stitch them together with your orchestrator (Docker logs, systemd, etc.).

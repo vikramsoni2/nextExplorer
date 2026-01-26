@@ -1,9 +1,9 @@
 .git
 .gitignore
 node_modules
-frontend/node_modules
-frontend/dist
-backend/node_modules
+web/node_modules
+web/dist
+api/node_modules
 cache
 screenshots
 npm-debug.log
@@ -29,8 +29,8 @@ node_modules
 npm-debug.log
 
 # Ignore frontend build artifacts and dependencies
-frontend/node_modules
-frontend/dist
+web/node_modules
+web/dist
 
-# Ignore backend dependencies
-backend/node_modules
+# Ignore api dependencies
+api/node_modules

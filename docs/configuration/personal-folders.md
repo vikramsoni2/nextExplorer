@@ -59,7 +59,7 @@ The included `docker-compose.dev.yml` shows a development-friendly setup:
 
 ```yaml
 services:
-  backend:
+  api:
     # …
     volumes:
       # Shared volumes

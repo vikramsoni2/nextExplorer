@@ -1,6 +1,6 @@
 # Environment Reference
 
-nextExplorer is configured almost entirely through environment variables. The backend (`backend/src/config/env.js`) centralizes the defaults you see here. Use this reference when you want to tune ports, paths, auth, integrations, or feature flags.
+nextExplorer is configured almost entirely through environment variables. The API (`api/src/config/env.js`) centralizes the defaults you see here. Use this reference when you want to tune ports, paths, auth, integrations, or feature flags.
 
 ## Server & networking
 
