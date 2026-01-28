@@ -3,15 +3,38 @@
   <head>
     <meta charset="UTF-8" />
 
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#212121" media="(prefers-color-scheme: dark)" />
+    <meta id="theme-color" name="theme-color" content="#ffffff" />
+
+    <style>
+      /* Prevent a white flash before the app CSS loads in Vite dev. */
+      html {
+        background-color: #ffffff;
+        color-scheme: light;
+      }
+      html.dark {
+        background-color: #212121;
+        color-scheme: dark;
+      }
+      body {
+        background-color: transparent;
+      }
+    </style>
+
     <script>
       (() => {
         try {
           const mode = localStorage.getItem('settings:theme') || 'auto';
           const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-          document.documentElement.classList.toggle(
-            'dark',
-            mode === 'dark' || (mode === 'auto' && prefersDark)
-          );
+          const isDark = mode === 'dark' || (mode === 'auto' && prefersDark);
+
+          document.documentElement.classList.toggle('dark', isDark);
+          document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+
+          const themeColorMeta = document.querySelector('meta#theme-color');
+          themeColorMeta?.setAttribute('content', isDark ? '#212121' : '#ffffff');
         } catch (_) {}
       })();
     </script>
