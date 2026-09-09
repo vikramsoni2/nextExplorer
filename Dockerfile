@@ -81,6 +81,8 @@ RUN apk add --no-cache \
       ffmpeg \
       gosu \
       ripgrep \
+      p7zip \
+      poppler-utils \
       imagemagick \
       openssh-client \
       unzip \
