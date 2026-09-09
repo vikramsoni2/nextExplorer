@@ -26,14 +26,14 @@ const isThumbnailable = (extension = '') => {
 };
 
 router.get(
-  '/thumbnails/*',
+  '/thumbnails/{*splat}',
   asyncHandler(async (req, res) => {
     const settings = await getSettings();
     const thumbsEnabled = settings?.thumbnails?.enabled !== false;
     if (!thumbsEnabled) {
       return res.json({ thumbnail: '' });
     }
-    const rawPath = req.params[0];
+    const rawPath = (req.params.splat || []).join('/');
     const relativePath = normalizeRelativePath(rawPath);
 
     if (!relativePath) {

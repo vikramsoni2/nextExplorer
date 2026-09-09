@@ -12,13 +12,13 @@ const { resolvePathWithAccess } = require('../services/accessManager');
 const { listDirectoryItems } = require('../services/directoryListingService');
 
 router.get(
-  '/browse/*',
+  '/browse/{*splat}',
   asyncHandler(async (req, res) => {
     const settings = await getSettings();
     const userSettings = req.user?.id ? await getUserSettings(req.user.id) : {};
     const thumbsEnabled = settings?.thumbnails?.enabled !== false;
     const includeHiddenFiles = userSettings?.showHiddenFiles === true;
-    const rawPath = req.params[0] || '';
+    const rawPath = (req.params.splat || []).join('/');
     const inputRelativePath = normalizeRelativePath(rawPath);
 
     const context = { user: req.user, guestSession: req.guestSession };
