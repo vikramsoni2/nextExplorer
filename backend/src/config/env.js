@@ -73,6 +73,14 @@ module.exports = {
   MAX_EXTRACTED_ARCHIVE_SIZE: process.env.MAX_EXTRACTED_ARCHIVE_SIZE?.trim() || null,
   MAX_ARCHIVE_ENTRIES: Number(process.env.MAX_ARCHIVE_ENTRIES) || 100000,
   ARCHIVE_EXTENSIONS: process.env.ARCHIVE_EXTENSIONS || '',
+  // --- Search index ---
+  SEARCH_INDEX: normalizeBoolean(process.env.SEARCH_INDEX) ?? false,
+  SEARCH_INDEX_BATCH: Number(process.env.SEARCH_INDEX_BATCH) || null,
+  SEARCH_INDEX_CPU_PERCENT: Number(process.env.SEARCH_INDEX_CPU_PERCENT) || null,
+  SEARCH_INDEX_MEMORY_MB: Number(process.env.SEARCH_INDEX_MEMORY_MB) || null,
+  SEARCH_INDEX_EXCLUDE: process.env.SEARCH_INDEX_EXCLUDE?.trim() || null,
+  SEARCH_INDEX_REBUILD: normalizeBoolean(process.env.SEARCH_INDEX_REBUILD) ?? false,
+  SEARCH_INDEX_RECONCILE_MS: Number(process.env.SEARCH_INDEX_RECONCILE_MS) || null,
   SEARCH_TIMEOUT_MS: Number(process.env.SEARCH_TIMEOUT_MS) || null,
   SEARCH_MAX_FILESIZE: process.env.SEARCH_MAX_FILESIZE?.trim() || null,
 

@@ -112,3 +112,36 @@ describe('searching for a filename pattern', () => {
  * overlay is most of a volume — so no search finished inside its budget, and
  * the same question came back truncated at a different point each time.
  */
+describe('a folder the search is told to leave alone', () => {
+  const seedWithExcluded = async () => {
+    const dir = await seed();
+    const excluded = path.join(envContext.volumeDir, 'Stacks', 'docker');
+    await fs.mkdir(excluded, { recursive: true });
+    await fs.writeFile(path.join(excluded, 'overlay.ps1'), 'Write-Host "inside docker"\n');
+    return dir;
+  };
+
+  it('is not walked by a filename search', async () => {
+    await seedWithExcluded();
+    const searchIndexExclusions = envContext.requireFresh('src/services/searchIndexExclusions');
+    searchIndexExclusions.setAdminPaths(['Stacks/docker']);
+
+    const names = (await search('*.ps1')).items.map((item) => item.name);
+
+    expect(names).not.toContain('overlay.ps1');
+    expect(names).toContain('deploy.ps1');
+  });
+
+  it('is searched when it is the folder the search was pointed at', async () => {
+    await seedWithExcluded();
+    const searchIndexExclusions = envContext.requireFresh('src/services/searchIndexExclusions');
+    searchIndexExclusions.setAdminPaths(['Stacks/docker']);
+
+    const response = await request(buildApp())
+      .get('/api/search')
+      .query({ q: '*.ps1', path: 'Stacks/docker' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.items.map((item) => item.name)).toContain('overlay.ps1');
+  });
+});

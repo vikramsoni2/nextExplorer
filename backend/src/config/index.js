@@ -429,6 +429,62 @@ module.exports = {
       Number.isFinite(env.SEARCH_TIMEOUT_MS) && env.SEARCH_TIMEOUT_MS > 0
         ? env.SEARCH_TIMEOUT_MS
         : 5000,
+    index: {
+      // Off unless asked for: an index is a promise to keep something up to
+      // date, and that is a decision rather than a default.
+      enabled: env.SEARCH_INDEX === true,
+      // Throw the index away at startup and read everything again. For when
+      // the index is suspected rather than trusted: it is derived data, so
+      // there is nothing in it that the files themselves do not say.
+      rebuild: env.SEARCH_INDEX_REBUILD === true,
+      // How many documents share one transaction. Small on purpose: a long
+      // transaction is a long stretch of the only thread the server has.
+      batch:
+        Number.isFinite(env.SEARCH_INDEX_BATCH) && env.SEARCH_INDEX_BATCH > 0
+          ? Math.floor(env.SEARCH_INDEX_BATCH)
+          : 25,
+      // The share of one core a pass may take. This replaces a pause counted
+      // per batch, which paced nothing: the cost of a batch is the cost of the
+      // files in it, and a fixed pause after an unbounded amount of work is
+      // not a limit on anything. A share of time is.
+      cpuPercent:
+        Number.isFinite(env.SEARCH_INDEX_CPU_PERCENT) &&
+        env.SEARCH_INDEX_CPU_PERCENT > 0 &&
+        env.SEARCH_INDEX_CPU_PERCENT <= 100
+          ? env.SEARCH_INDEX_CPU_PERCENT
+          : 25,
+      // Folders the index has no business reading. The volume is the user's,
+      // and what is worth searching in it is theirs to say: a build tree, a
+      // mail spool, a backup of a machine — hundreds of thousands of files
+      // each, none of them anything anyone searches for by content.
+      //
+      // Named rather than guessed at. A list of "obviously noise" directories
+      // baked in here would decide, for everyone, that something is not worth
+      // finding — and with the index answering in place of the live scan, that
+      // decision would be invisible.
+      exclude: String(env.SEARCH_INDEX_EXCLUDE || '')
+        .split(/[\n,]/)
+        .map((entry) => entry.trim().replace(/^\/+|\/+$/g, ''))
+        .filter(Boolean),
+      // What a pass may add to the process before it gives up and waits for
+      // the next one. Every other bound is a belief about what a file costs;
+      // this is what holds when one of those beliefs is wrong.
+      //
+      // Only consulted when the container enforces no limit of its own; where
+      // it does, that limit is the ceiling and this is ignored. A pass over
+      // two hundred thousand documents was measured growing sixty megabytes,
+      // but the figure this is compared against is the whole process, so it
+      // has to leave room for everything else that runs during the twenty-odd
+      // minutes a pass takes.
+      memoryBudgetBytes:
+        Number.isFinite(env.SEARCH_INDEX_MEMORY_MB) && env.SEARCH_INDEX_MEMORY_MB > 0
+          ? env.SEARCH_INDEX_MEMORY_MB * 1024 * 1024
+          : 256 * 1024 * 1024,
+      reconcileMs:
+        Number.isFinite(env.SEARCH_INDEX_RECONCILE_MS) && env.SEARCH_INDEX_RECONCILE_MS > 0
+          ? env.SEARCH_INDEX_RECONCILE_MS
+          : 60 * 60 * 1000,
+    },
   },
 
   thumbnails: { size: 200, quality: 70 },
