@@ -31,7 +31,27 @@ const migrate = (db) => {
     );
   `);
 
-  const getVersion = db.prepare('SELECT value FROM meta WHERE key = ?').pluck();
+  // DDL for the folder size index. Kept as a constant so it can be applied both by
+// the versioned migration (clean installs) and idempotently on every open — the
+// latter guarantees the table exists even when the recorded schema_version was
+// already advanced past this migration by a different build sharing /config.
+const FOLDER_SIZE_INDEX_DDL = `
+  CREATE TABLE IF NOT EXISTS folder_size_index (
+    path_hash         TEXT PRIMARY KEY,
+    parent_hash       TEXT,
+    volume            TEXT NOT NULL,
+    relative_path     TEXT NOT NULL,
+    size_bytes        INTEGER NOT NULL DEFAULT 0,
+    entry_count       INTEGER NOT NULL DEFAULT 0,
+    last_delta_at     DATETIME,
+    last_full_scan_at DATETIME,
+    dirty             INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_folder_size_parent ON folder_size_index(parent_hash);
+  CREATE INDEX IF NOT EXISTS idx_folder_size_volume ON folder_size_index(volume);
+`;
+
+const getVersion = db.prepare('SELECT value FROM meta WHERE key = ?').pluck();
   let version = Number(getVersion.get('schema_version') || 0);
 
   db.transaction(() => {
@@ -363,6 +383,15 @@ const migrate = (db) => {
       );
       version = 9;
     }
+    if (version < 10) {
+      logger.info('[DB Migration] Migrating to v10: Folder size index...');
+      db.exec(FOLDER_SIZE_INDEX_DDL);
+      db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run(
+        'schema_version',
+        String(10)
+      );
+      version = 10;
+    }
   })();
 };
 
@@ -585,6 +614,14 @@ const getDb = async () => {
 
   const db = new Database(dbPath);
   migrate(db);
+  // Applied on every open as well as by the migration above: a database created
+  // by another build sharing this /config may already be past v10 without the
+  // table, which would make the indexer fail with "no such table".
+  try {
+    db.exec(FOLDER_SIZE_INDEX_DDL);
+  } catch (err) {
+    logger.warn({ err }, '[DB] Failed to ensure folder_size_index table');
+  }
   ensureAnonymousUser(db);
   dbInstance = db;
   return dbInstance;

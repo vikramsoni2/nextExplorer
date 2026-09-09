@@ -73,6 +73,17 @@ module.exports = {
   MAX_EXTRACTED_ARCHIVE_SIZE: process.env.MAX_EXTRACTED_ARCHIVE_SIZE?.trim() || null,
   MAX_ARCHIVE_ENTRIES: Number(process.env.MAX_ARCHIVE_ENTRIES) || 100000,
   ARCHIVE_EXTENSIONS: process.env.ARCHIVE_EXTENSIONS || '',
+  // --- Folder size index ---
+  FOLDER_SIZE_MODE: process.env.FOLDER_SIZE_MODE?.trim().toLowerCase() || 'off',
+  FOLDER_SIZE_EXCLUDE_PATHS: process.env.FOLDER_SIZE_EXCLUDE_PATHS || '',
+  FOLDER_SIZE_CONCURRENCY: Number(process.env.FOLDER_SIZE_CONCURRENCY) || 6,
+  FOLDER_SIZE_NETWORK_CONCURRENCY: Number(process.env.FOLDER_SIZE_NETWORK_CONCURRENCY) || 2,
+  FOLDER_SIZE_FLUSH_MS: Number(process.env.FOLDER_SIZE_FLUSH_MS) || 3000,
+  FOLDER_SIZE_RECONCILE_MS: Number(process.env.FOLDER_SIZE_RECONCILE_MS) || 0,
+  FOLDER_SIZE_RECONCILE_MIN_MS: Number(process.env.FOLDER_SIZE_RECONCILE_MIN_MS) || 900000,
+  FOLDER_SIZE_RECONCILE_MAX_MS: Number(process.env.FOLDER_SIZE_RECONCILE_MAX_MS) || 43200000,
+  FOLDER_SIZE_RECONCILE_BATCH: Number(process.env.FOLDER_SIZE_RECONCILE_BATCH) || 100,
+  FOLDER_SIZE_REBUILD: normalizeBoolean(process.env.FOLDER_SIZE_REBUILD) || false,
   // --- Search index ---
   SEARCH_INDEX: normalizeBoolean(process.env.SEARCH_INDEX) ?? false,
   SEARCH_INDEX_BATCH: Number(process.env.SEARCH_INDEX_BATCH) || null,

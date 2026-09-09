@@ -48,6 +48,10 @@ router.get('/features', (_req, res) => {
     navigation: {
       skipHome: Boolean(features?.skipHome),
     },
+    folderSize: {
+      mode: features?.folderSizeMode || 'off',
+      enabled: (features?.folderSizeMode || 'off') !== 'off',
+    },
     terminal: {
       enabled: Boolean(features?.terminal) && terminalService.isAvailable(),
       extensions: Array.isArray(terminal?.extensions) ? terminal.extensions : [],

@@ -5,6 +5,8 @@ import { normalizePath } from '@/api';
 import { useSettingsStore } from '@/stores/settings';
 import FileObject from '@/components/FileObject.vue';
 import { useFileStore } from '@/stores/fileStore';
+import { useFolderSizeStore } from '@/stores/folderSize';
+import { useFeaturesStore } from '@/stores/features';
 import LoadingIcon from '@/icons/LoadingIcon.vue';
 import { useSelection } from '@/composables/itemSelection';
 import { useExplorerContextMenu } from '@/composables/contextMenu';
@@ -26,6 +28,8 @@ import { useFileDragDrop } from '@/composables/useFileDragDrop';
 
 const settings = useSettingsStore();
 const fileStore = useFileStore();
+const folderSizeStore = useFolderSizeStore();
+const featuresStore = useFeaturesStore();
 const route = useRoute();
 const { gridClasses, gridStyle } = useViewConfig();
 const loading = ref(true);
@@ -243,6 +247,19 @@ const loadFiles = async () => {
     updateScrollState();
   }
 };
+
+// Ask for the size of every folder currently on screen, in one request. Runs
+// again whenever the listing changes, which is what makes a folder show its
+// size the moment it appears rather than at the next pass.
+const refreshFolderSizes = () => {
+  if (!featuresStore.folderSizeEnabled) return;
+  const dirPaths = fileStore.getCurrentPathItems
+    .filter((item) => item?.kind === 'directory')
+    .map((item) => (item.path ? `${item.path}/${item.name}` : item.name));
+  if (dirPaths.length) folderSizeStore.ensureSizes(dirPaths).catch(() => {});
+};
+
+watch(() => fileStore.getCurrentPathItems, refreshFolderSizes, { immediate: true });
 
 onMounted(loadFiles);
 
