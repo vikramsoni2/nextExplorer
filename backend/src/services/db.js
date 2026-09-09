@@ -8,6 +8,27 @@ const logger = require('../utils/logger');
 
 let dbInstance = null;
 
+// DDL for the folder size index. Kept as a constant so it can be applied both by
+// the versioned migration (clean installs) and idempotently on every open — the
+// latter guarantees the table exists even when the recorded schema_version was
+// already advanced past this migration by a different build sharing /config.
+const FOLDER_SIZE_INDEX_DDL = `
+  CREATE TABLE IF NOT EXISTS folder_size_index (
+    path_hash         TEXT PRIMARY KEY,
+    parent_hash       TEXT,
+    volume            TEXT NOT NULL,
+    relative_path     TEXT NOT NULL,
+    size_bytes        INTEGER NOT NULL DEFAULT 0,
+    entry_count       INTEGER NOT NULL DEFAULT 0,
+    last_delta_at     DATETIME,
+    last_full_scan_at DATETIME,
+    dirty             INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_folder_size_parent ON folder_size_index(parent_hash);
+  CREATE INDEX IF NOT EXISTS idx_folder_size_volume ON folder_size_index(volume);
+`;
+
+
 const getDbPath = () => {
   const configDir = directories.config;
   // Generic app database for auth, shares, and user settings.
@@ -30,26 +51,6 @@ const migrate = (db) => {
       value TEXT
     );
   `);
-
-  // DDL for the folder size index. Kept as a constant so it can be applied both by
-// the versioned migration (clean installs) and idempotently on every open — the
-// latter guarantees the table exists even when the recorded schema_version was
-// already advanced past this migration by a different build sharing /config.
-const FOLDER_SIZE_INDEX_DDL = `
-  CREATE TABLE IF NOT EXISTS folder_size_index (
-    path_hash         TEXT PRIMARY KEY,
-    parent_hash       TEXT,
-    volume            TEXT NOT NULL,
-    relative_path     TEXT NOT NULL,
-    size_bytes        INTEGER NOT NULL DEFAULT 0,
-    entry_count       INTEGER NOT NULL DEFAULT 0,
-    last_delta_at     DATETIME,
-    last_full_scan_at DATETIME,
-    dirty             INTEGER NOT NULL DEFAULT 0
-  );
-  CREATE INDEX IF NOT EXISTS idx_folder_size_parent ON folder_size_index(parent_hash);
-  CREATE INDEX IF NOT EXISTS idx_folder_size_volume ON folder_size_index(volume);
-`;
 
 const getVersion = db.prepare('SELECT value FROM meta WHERE key = ?').pluck();
   let version = Number(getVersion.get('schema_version') || 0);
