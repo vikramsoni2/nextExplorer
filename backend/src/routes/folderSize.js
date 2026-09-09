@@ -19,6 +19,20 @@ const {
 
 const router = express.Router();
 
+/**
+ * The path a wildcard route matched.
+ *
+ * Express 4 puts an unnamed `*` into `params[0]` as one string; Express 5 wants
+ * the wildcard named and gives back an array of segments. Reading both keeps
+ * this route working on either.
+ */
+const wildcardPath = (req) => {
+  const splat = req.params?.splat;
+  if (Array.isArray(splat)) return splat.join('/');
+  if (typeof splat === 'string') return splat;
+  return String(req.params?.[0] || '');
+};
+
 const MAX_BATCH_PATHS = 500;
 const MAX_MANUAL_REFRESHES = 24;
 const manualRefreshes = new Map();
@@ -154,9 +168,9 @@ const queueRefreshDirectory = (absolutePath) => {
 // normal size reads, this is deliberately authoritative and scans only the
 // requested subtree, updating every indexed descendant and its ancestors.
 router.post(
-  '/folder-size/refresh/{*splat}',
+  '/folder-size/refresh/*',
   asyncHandler(async (req, res) => {
-    const raw = (req.params.splat || []).join('/');
+    const raw = wildcardPath(req);
     const relativePath = normalizeRelativePath(raw);
     if (!relativePath) {
       throw new ValidationError('A folder path is required.');
@@ -204,9 +218,9 @@ router.post(
 // returned regardless of `canEnter`; `indexed:false` (not a 500) when the path
 // is not yet in the index.
 router.get(
-  '/folder-size/{*splat}',
+  '/folder-size/*',
   asyncHandler(async (req, res) => {
-    const raw = (req.params.splat || []).join('/');
+    const raw = wildcardPath(req);
     const context = { user: req.user, guestSession: req.guestSession };
     const { result, absolutePath } = await lookupFolderSize(context, raw);
     res.json(result);
