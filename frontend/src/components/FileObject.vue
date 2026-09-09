@@ -5,6 +5,9 @@ import { storeToRefs } from 'pinia';
 import FileIcon from '@/icons/FileIcon.vue';
 import { formatBytes, formatDate } from '@/utils';
 import { getKindLabel } from '@/utils/fileKinds';
+import FolderSizeLabel from '@/components/FolderSizeLabel.vue';
+import { useFolderSizeStore } from '@/stores/folderSize';
+import { useFeaturesStore } from '@/stores/features';
 import { useNavigation } from '@/composables/navigation';
 import { useSelection } from '@/composables/itemSelection';
 import { useFileStore } from '@/stores/fileStore';
@@ -24,6 +27,22 @@ const settings = useSettingsStore();
 const { openItem } = useNavigation();
 const { handleSelection, isSelected, toggleSelection } = useSelection();
 const fileStore = useFileStore();
+const folderSizeStore = useFolderSizeStore();
+const featuresStore = useFeaturesStore();
+
+const isDirectory = computed(() => props.item?.kind === 'directory');
+// item.path is the parent's logical path and item.name the entry name, so the
+// folder's own logical path — which is how the index knows it — is the two
+// joined.
+const folderFullPath = computed(() => {
+  const parent = props.item?.path || '';
+  const name = props.item?.name || '';
+  return parent ? `${parent}/${name}` : name;
+});
+const showFolderSize = computed(() => isDirectory.value && featuresStore.folderSizeEnabled);
+const folderSizeEntry = computed(() =>
+  showFolderSize.value ? folderSizeStore.sizeFor(folderFullPath.value) : null
+);
 const { renameState, selectionMode } = storeToRefs(fileStore);
 const { canDragDrop, handleDragStart } = useFileDragDrop();
 const contextMenu = useExplorerContextMenu();
@@ -359,7 +378,8 @@ if (isTouchDevice.value) {
           </template>
         </div>
         <p class="text-xs text-stone-400">
-          {{ formatBytes(item.size) }}
+          <FolderSizeLabel v-if="showFolderSize" :entry="folderSizeEntry" />
+          <template v-else>{{ formatBytes(item.size) }}</template>
         </p>
       </div>
     </div>
@@ -432,7 +452,8 @@ if (isTouchDevice.value) {
         </template>
       </div>
       <div class="text-sm">
-        {{ item.kind === 'directory' ? '&mdash;' : formatBytes(item.size) }}
+        <FolderSizeLabel v-if="showFolderSize" :entry="folderSizeEntry" />
+        <template v-else>{{ item.kind === 'directory' ? '&mdash;' : formatBytes(item.size) }}</template>
       </div>
       <div class="text-sm">
         {{ getKindLabel(item) }}

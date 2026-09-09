@@ -387,7 +387,51 @@ const archives = (() => {
   };
 })();
 
+// --- Folder size index ---
+const VALID_FOLDER_SIZE_MODES = new Set(['off', 'shallow', 'full']);
+const folderSizeMode = VALID_FOLDER_SIZE_MODES.has(env.FOLDER_SIZE_MODE)
+  ? env.FOLDER_SIZE_MODE
+  : 'off';
+
+const folderSize = {
+  mode: folderSizeMode,
+  enabled: folderSizeMode !== 'off',
+  envExcludedPaths: env.FOLDER_SIZE_EXCLUDE_PATHS,
+  concurrency: env.FOLDER_SIZE_CONCURRENCY,
+  networkConcurrency: env.FOLDER_SIZE_NETWORK_CONCURRENCY,
+  flushMs: env.FOLDER_SIZE_FLUSH_MS,
+  reconcileMs: env.FOLDER_SIZE_RECONCILE_MS,
+  reconcileMinMs: env.FOLDER_SIZE_RECONCILE_MIN_MS,
+  reconcileMaxMs: env.FOLDER_SIZE_RECONCILE_MAX_MS,
+  reconcileBatch: env.FOLDER_SIZE_RECONCILE_BATCH,
+  reconcilePauseMs: env.FOLDER_SIZE_RECONCILE_PAUSE_MS,
+  reconcileMaxDirectories:
+    Number.isFinite(env.FOLDER_SIZE_RECONCILE_MAX_DIRECTORIES) &&
+    env.FOLDER_SIZE_RECONCILE_MAX_DIRECTORIES >= 0
+      ? Math.floor(env.FOLDER_SIZE_RECONCILE_MAX_DIRECTORIES)
+      : 200,
+  subtreeBatch:
+    Number.isFinite(env.FOLDER_SIZE_SUBTREE_BATCH) && env.FOLDER_SIZE_SUBTREE_BATCH > 0
+      ? Math.floor(env.FOLDER_SIZE_SUBTREE_BATCH)
+      : env.FOLDER_SIZE_RECONCILE_BATCH,
+  subtreePauseMs:
+    Number.isFinite(env.FOLDER_SIZE_SUBTREE_PAUSE_MS) && env.FOLDER_SIZE_SUBTREE_PAUSE_MS >= 0
+      ? env.FOLDER_SIZE_SUBTREE_PAUSE_MS
+      : env.FOLDER_SIZE_RECONCILE_PAUSE_MS,
+  subtreeSlowLogMs: Math.max(0, env.FOLDER_SIZE_SUBTREE_SLOW_LOG_MS),
+  ioTimeoutMs:
+    Number.isFinite(env.FOLDER_SIZE_IO_TIMEOUT_MS) && env.FOLDER_SIZE_IO_TIMEOUT_MS >= 0
+      ? env.FOLDER_SIZE_IO_TIMEOUT_MS
+      : 30000,
+  maxStalledIo:
+    Number.isFinite(env.FOLDER_SIZE_MAX_STALLED_IO) && env.FOLDER_SIZE_MAX_STALLED_IO > 0
+      ? Math.floor(env.FOLDER_SIZE_MAX_STALLED_IO)
+      : 2,
+  rebuild: env.FOLDER_SIZE_REBUILD,
+};
+
 module.exports = {
+  folderSize,
   archives,
   port: env.PORT,
   address: env.ADDRESS,
@@ -498,6 +542,7 @@ module.exports = {
 
   features: {
     volumeUsage: env.SHOW_VOLUME_USAGE,
+    folderSizeMode,
     personalFolders: env.USER_DIR_ENABLED,
     userVolumes: env.USER_VOLUMES,
     shares: env.SHARES_ENABLED,
