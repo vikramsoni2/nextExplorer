@@ -718,7 +718,7 @@ router.get(
 
 const handleDirectFileRequest = async (req, res) => {
   const shareToken = req.params.token;
-  const rawInnerPath = req.params[0] || '';
+  const rawInnerPath = (req.params.splat || []).join('/');
   const mode = normalizeDirectFileMode(req.query?.mode);
   let innerPath = '';
 
@@ -811,7 +811,7 @@ const handleDirectFileRequest = async (req, res) => {
  * itself, letting the browser preview supported formats or download others.
  */
 router.get('/:token/file', asyncHandler(handleDirectFileRequest));
-router.get('/:token/file/*', asyncHandler(handleDirectFileRequest));
+router.get('/:token/file/{*splat}', asyncHandler(handleDirectFileRequest));
 
 /**
  * GET /api/share/:token/browse/* - Browse share contents
@@ -828,10 +828,10 @@ router.get('/:token/file/*', asyncHandler(handleDirectFileRequest));
  * }
  */
 router.get(
-  '/:token/browse/*',
+  '/:token/browse/{*splat}',
   asyncHandler(async (req, res) => {
     const shareToken = req.params.token;
-    const innerPath = req.params[0] || '';
+    const innerPath = (req.params.splat || []).join('/');
 
     const logicalPath = innerPath ? `share/${shareToken}/${innerPath}` : `share/${shareToken}`;
 

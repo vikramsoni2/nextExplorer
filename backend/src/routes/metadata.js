@@ -82,9 +82,9 @@ const sumDirectory = async (dirPath, limit = 200000) => {
 };
 
 router.get(
-  '/metadata/*',
+  '/metadata/{*splat}',
   asyncHandler(async (req, res) => {
-    const rawPath = req.params[0] || '';
+    const rawPath = (req.params.splat || []).join('/');
     const relativePath = normalizeRelativePath(rawPath);
     if (!relativePath) {
       throw new ValidationError('A file path is required.');
