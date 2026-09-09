@@ -13,6 +13,7 @@ const { configureHttpLogging } = require('./middleware/logging');
 const { configureCors } = require('./middleware/cors');
 const { configureOidc } = require('./middleware/oidc');
 const { configureHttpsWarning } = require('./middleware/httpsWarning');
+const { requestContextMiddleware } = require('./utils/requestContext');
 const authMiddleware = require('./middleware/authMiddleware');
 const registerRoutes = require('./routes');
 const { configureStaticFiles } = require('./utils/staticServer');
@@ -49,6 +50,7 @@ const createApp = async (options = {}) => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+  app.use(requestContextMiddleware);
   logger.debug('Mounted cookie parser middleware');
 
   if (!skipBootstrap) {

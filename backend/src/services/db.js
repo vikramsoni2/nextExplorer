@@ -12,6 +12,14 @@ let dbInstance = null;
 // the versioned migration (clean installs) and idempotently on every open — the
 // latter guarantees the table exists even when the recorded schema_version was
 // already advanced past this migration by a different build sharing /config.
+/** Adds a column only when the table does not already have it. */
+const addColumnIfMissing = (db, tableName, columnName, definition) => {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`);
+  }
+};
+
 const FOLDER_SIZE_INDEX_DDL = `
   CREATE TABLE IF NOT EXISTS folder_size_index (
     path_hash         TEXT PRIMARY KEY,
@@ -392,6 +400,24 @@ const getVersion = db.prepare('SELECT value FROM meta WHERE key = ?').pluck();
         String(10)
       );
       version = 10;
+    }
+    if (version < 11) {
+      logger.info('[DB Migration] Migrating to v11: One personal folder per account...');
+      addColumnIfMissing(db, 'users', 'personal_folder_name', 'personal_folder_name TEXT');
+      // SQLite lets a unique index hold any number of NULLs, so an account that
+      // has not claimed a name yet does not collide with the others.
+      db.exec(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_personal_folder ON users(personal_folder_name);'
+      );
+      // eslint-disable-next-line global-require
+      const { claimAllPersonalFolderNames } = require('./personalFolders');
+      const claimed = claimAllPersonalFolderNames(db);
+      logger.info({ claimed }, '[DB Migration] Personal folder names assigned');
+      db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run(
+        'schema_version',
+        String(11)
+      );
+      version = 11;
     }
   })();
 };
