@@ -337,7 +337,58 @@ const shares = {
 };
 
 // --- Main Export ---
+
+// --- Archive extraction ---
+// Extensions the app is willing to offer for extraction, provided the local
+// 7-Zip build actually supports them (checked at runtime by archiveService).
+// A whitelist keeps container-ish formats 7-Zip can technically read (docx,
+// apk, exe…) from being presented as archives in the UI.
+const DEFAULT_ARCHIVE_EXTENSIONS = [
+  '7z',
+  'zip',
+  'iso',
+  'rar',
+  'tar',
+  'gz',
+  'tgz',
+  'bz2',
+  'tbz2',
+  'xz',
+  'txz',
+  'cab',
+  'wim',
+  'cpio',
+  'rpm',
+  'deb',
+  'z',
+  'lzh',
+  'arj',
+  'zst',
+];
+
+const archives = (() => {
+  const raw = String(env.ARCHIVE_EXTENSIONS || '').trim();
+  // Extraction guards, generous enough for real archives but low enough that a
+  // crafted one cannot fill the volume before anyone notices.
+  const limits = {
+    maxExtractedBytes: (() => {
+      const parsed = parseByteSize(env.MAX_EXTRACTED_ARCHIVE_SIZE);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 32 * 1024 * 1024 * 1024;
+    })(),
+    maxEntries: env.MAX_ARCHIVE_ENTRIES,
+  };
+  if (!raw) return { extensions: DEFAULT_ARCHIVE_EXTENSIONS, ...limits };
+  // 'zip,iso' replaces the default list; '+udf,squashfs' extends it.
+  const extend = raw.startsWith('+');
+  const list = parseExtensionList(extend ? raw.slice(1) : raw);
+  return {
+    extensions: extend ? [...new Set([...DEFAULT_ARCHIVE_EXTENSIONS, ...list])] : list,
+    ...limits,
+  };
+})();
+
 module.exports = {
+  archives,
   port: env.PORT,
   address: env.ADDRESS,
   http: {
