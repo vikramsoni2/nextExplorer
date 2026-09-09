@@ -73,6 +73,7 @@ module.exports = {
   MAX_EXTRACTED_ARCHIVE_SIZE: process.env.MAX_EXTRACTED_ARCHIVE_SIZE?.trim() || null,
   MAX_ARCHIVE_ENTRIES: Number(process.env.MAX_ARCHIVE_ENTRIES) || 100000,
   ARCHIVE_EXTENSIONS: process.env.ARCHIVE_EXTENSIONS || '',
+  SEARCH_TIMEOUT_MS: Number(process.env.SEARCH_TIMEOUT_MS) || null,
   SEARCH_MAX_FILESIZE: process.env.SEARCH_MAX_FILESIZE?.trim() || null,
 
   // OnlyOffice

@@ -422,6 +422,13 @@ module.exports = {
     ripgrep: env.SEARCH_RIPGREP ?? true,
     maxFileSize: env.SEARCH_MAX_FILESIZE,
     maxFileSizeBytes: searchMaxFileSizeBytes,
+    // How long one search may spend looking before answering with what it has.
+    // Reading a large tree to be certain there is nothing more is worse than
+    // an answer that arrives.
+    timeoutMs:
+      Number.isFinite(env.SEARCH_TIMEOUT_MS) && env.SEARCH_TIMEOUT_MS > 0
+        ? env.SEARCH_TIMEOUT_MS
+        : 5000,
   },
 
   thumbnails: { size: 200, quality: 70 },
