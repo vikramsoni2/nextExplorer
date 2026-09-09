@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const nodeFs = require('fs');
 const fs = require('fs/promises');
 const WebSocket = require('ws');
 const logger = require('../utils/logger');
@@ -8,6 +9,7 @@ const CONTROL_PREFIX = '\u001e';
 class TerminalService {
   constructor() {
     this.terminals = new Map();
+    this.terminalWatchers = new Map();
     this.sessionTokens = new Map();
     this.tokenTtlMs = 5 * 60 * 1000; // 5 minutes
     this.pty = null;
@@ -129,17 +131,17 @@ class TerminalService {
 
         if (!session) {
           logger.warn(
-            { url: req.url },
+            { hasToken: Boolean(token) },
             'Rejected terminal WebSocket connection: invalid or expired token'
           );
           ws.close(1008, 'Invalid or expired terminal session token');
           return;
         }
 
+        // Neither the URL (it carries the one-time terminal token) nor the
+        // headers (session cookie) belong in the logs.
         logger.info(
           {
-            url: req.url,
-            headers: req.headers,
             userId: session.userId,
             roles: session.roles,
           },
@@ -203,6 +205,60 @@ class TerminalService {
       });
 
       this.terminals.set(terminalId, ptyProcess);
+      let filesystemChangeTimer = null;
+
+      const sendControlMessage = (payload) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        try {
+          ws.send(`${CONTROL_PREFIX}${JSON.stringify(payload)}`);
+        } catch (error) {
+          logger.warn(
+            { err: error, terminalId, type: payload?.type },
+            'Failed to send terminal control message'
+          );
+        }
+      };
+
+      const notifyFilesystemChanged = () => {
+        if (filesystemChangeTimer) {
+          clearTimeout(filesystemChangeTimer);
+        }
+        filesystemChangeTimer = setTimeout(() => {
+          filesystemChangeTimer = null;
+          sendControlMessage({ type: 'filesystemChanged', cwd });
+        }, 500);
+      };
+
+      const closeFilesystemWatcher = () => {
+        if (filesystemChangeTimer) {
+          clearTimeout(filesystemChangeTimer);
+          filesystemChangeTimer = null;
+        }
+        const watcher = this.terminalWatchers.get(terminalId);
+        if (watcher) {
+          try {
+            watcher.close();
+          } catch (error) {
+            logger.warn(
+              { err: error, terminalId, cwd },
+              'Failed to close terminal filesystem watcher'
+            );
+          }
+          this.terminalWatchers.delete(terminalId);
+        }
+      };
+
+      try {
+        const watcher = nodeFs.watch(cwd, { persistent: false }, notifyFilesystemChanged);
+        watcher.on('error', (error) => {
+          logger.warn({ err: error, terminalId, cwd }, 'Terminal filesystem watcher failed');
+          closeFilesystemWatcher();
+        });
+        this.terminalWatchers.set(terminalId, watcher);
+      } catch (error) {
+        logger.warn({ err: error, terminalId, cwd }, 'Unable to watch terminal working directory');
+      }
+
       logger.info(
         { terminalId, shell, pid: ptyProcess.pid },
         'Terminal process spawned successfully'
@@ -275,6 +331,7 @@ class TerminalService {
 
       ws.on('close', () => {
         logger.info({ terminalId }, 'WebSocket connection closed');
+        closeFilesystemWatcher();
         ptyProcess.kill();
         this.terminals.delete(terminalId);
       });
@@ -290,6 +347,15 @@ class TerminalService {
 
   cleanup() {
     logger.info({ count: this.terminals.size }, 'Cleaning up terminal processes');
+    this.terminalWatchers.forEach((watcher, id) => {
+      try {
+        watcher.close();
+      } catch (error) {
+        logger.error({ err: error, terminalId: id }, 'Error closing terminal filesystem watcher');
+      }
+    });
+    this.terminalWatchers.clear();
+
     this.terminals.forEach((terminal, id) => {
       try {
         terminal.kill();
