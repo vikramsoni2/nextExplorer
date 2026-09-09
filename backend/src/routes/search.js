@@ -6,7 +6,12 @@ const readline = require('readline');
 
 const { normalizeRelativePath } = require('../utils/pathUtils');
 const { pathExists } = require('../utils/fsUtils');
-const { excludedFiles, hiddenFiles, search: searchConfig } = require('../config/index');
+const {
+  excludedFiles,
+  hiddenFiles,
+  search: searchConfig,
+  directories,
+} = require('../config/index');
 const { resolvePathWithAccess, getAccessInfo } = require('../services/accessManager');
 const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, NotFoundError, ForbiddenError } = require('../errors/AppError');
@@ -17,10 +22,13 @@ const {
   isSearchableDocument,
   SEARCHABLE_EXTENSIONS: DOCUMENT_EXTENSIONS,
 } = require('../services/documentText');
+const searchIndexStore = require('../services/searchIndexStore');
 const { collectResults, buildPage } = require('../services/searchCollector');
 const { parseSearchTerm } = require('../services/searchTerm');
 const { ripgrepIgnoreGlobs, isIgnoredDirectory } = require('../services/searchIgnore');
 const { whenClientDisconnects } = require('../utils/clientDisconnect');
+const searchIndexExclusions = require('../services/searchIndexExclusions');
+const { getDb } = require('../services/db');
 const logger = require('../utils/logger');
 const { getSettings, getUserSettings } = require('../services/settingsService');
 
@@ -143,7 +151,13 @@ const buildRipgrepArgs = (includeHiddenFiles = false, relBasePath = '') => [
  * Reading the list every time rather than once: an administrator changing it
  * in Settings expects the next search to obey, not the next restart.
  */
-const excludedSearchPaths = () => [];
+const excludedSearchPaths = () => {
+  try {
+    return searchIndexExclusions.effectivePaths();
+  } catch {
+    return [];
+  }
+};
 
 const normalizePath = (p, relBasePath) => {
   const normalized = p.replace(/\\/g, '/');
@@ -412,6 +426,69 @@ async function* mergeResults(...generators) {
 }
 
 /**
+ * Matches the index already knows about.
+ *
+ * It stores terms and not text, so the line to show is read back from the file
+ * — which costs one read per result rather than one per document, and only for
+ * the handful actually returned. That is the whole bargain of a contentless
+ * index, and it is a good one.
+ *
+ * It covers the volume root. A search based anywhere else — a personal folder,
+ * an assigned volume — falls back to reading as it goes, because the index
+ * does not hold those.
+ */
+async function* streamIndexMatches(relBasePath, term, seenPaths, shouldInclude, limit) {
+  let paths;
+  try {
+    const db = await getDb();
+    // Over-fetch: permissions are applied after the query, since the index
+    // does not know who may read what.
+    paths = searchIndexStore.search(db, term, Math.max(limit * 3, 50));
+  } catch (error) {
+    logger.debug({ err: error }, 'Search index query failed; falling back to reading as we go');
+    return;
+  }
+
+  const needle = term.toLowerCase();
+  const prefix = relBasePath ? `${relBasePath}/` : '';
+
+  for (const rel of paths) {
+    if (prefix && !rel.startsWith(prefix) && rel !== relBasePath) continue;
+    if (seenPaths.has(rel)) continue;
+
+    const absolutePath = path.join(directories.volume, rel);
+    let line = '';
+    let lineNumber = null;
+
+    if (isSearchableDocument(absolutePath)) {
+      // eslint-disable-next-line no-await-in-loop
+      const match = await findDocumentTextMatch(absolutePath, needle);
+      if (match) {
+        line = match.line;
+        lineNumber = match.lineNumber;
+      }
+    } else {
+      // eslint-disable-next-line no-await-in-loop
+      const match = await findPlainTextMatch(absolutePath, needle);
+      if (match) {
+        line = match.line;
+        lineNumber = match.lineNumber;
+      }
+    }
+
+    // The file changed since it was indexed and no longer says this. The next
+    // pass will notice; this one simply does not offer it.
+    if (!lineNumber) continue;
+
+    seenPaths.add(rel);
+    // eslint-disable-next-line no-await-in-loop
+    if (await shouldInclude(rel)) {
+      yield formatResult(rel, 'file', line, lineNumber);
+    }
+  }
+}
+
+/**
  * Matches inside documents whose text has to be extracted first.
  *
  * Office files are zip archives and PDFs are compressed streams, so ripgrep
@@ -495,7 +572,7 @@ async function* generateRipgrepResults(
   shouldInclude,
   deep = true,
   includeHiddenFiles = false,
-  { onContentSources, onContentSourceDone } = {}
+  { useIndex = false, limit = 100, onContentSources, onContentSourceDone } = {}
 ) {
   const matcher = parseSearchTerm(term);
   const seenPaths = new Set();
@@ -524,14 +601,18 @@ async function* generateRipgrepResults(
     shouldInclude,
     includeHiddenFiles
   );
-  const contentGen = streamContentMatches(
-    baseAbsPath,
-    relBasePath,
-    term,
-    seenPaths,
-    shouldInclude,
-    includeHiddenFiles
-  );
+  // With an index in place the live content scan is not run at all: doing both
+  // would be exactly the cost an index exists to remove.
+  const contentGen = useIndex
+    ? streamIndexMatches(relBasePath, term, seenPaths, shouldInclude, limit)
+    : streamContentMatches(
+        baseAbsPath,
+        relBasePath,
+        term,
+        seenPaths,
+        shouldInclude,
+        includeHiddenFiles
+      );
 
   const documentGen = streamDocumentMatches(
     baseAbsPath,
@@ -542,6 +623,8 @@ async function* generateRipgrepResults(
     includeHiddenFiles
   );
 
+  // The document pass reads Office files and PDFs one by one; the index has
+  // already read them.
   //
   // The content sources announce their own exhaustion, because the collector
   // has to know when a reserve it is holding the page open for can no longer
@@ -550,7 +633,11 @@ async function* generateRipgrepResults(
   // A wildcard term describes filenames and nothing else: no file contains
   // the characters `*.ps1`, so reading the tree for them costs the whole
   // budget to return files that merely mention the pattern in their text.
-  const contentSources = !matcher.readsFileContents ? [] : [contentGen, documentGen];
+  const contentSources = !matcher.readsFileContents
+    ? []
+    : useIndex
+      ? [contentGen]
+      : [contentGen, documentGen];
   if (!matcher.readsFileContents) {
     await contentGen.return?.();
     await documentGen.return?.();
@@ -570,7 +657,8 @@ async function* generateFallbackResults(
   term,
   shouldInclude,
   deep = true,
-  includeHiddenFiles = false
+  includeHiddenFiles = false,
+  { useIndex = false, limit = 100 } = {}
 ) {
   const seenPaths = new Set();
   const matcher = parseSearchTerm(term);
@@ -638,6 +726,16 @@ async function* generateFallbackResults(
       }
     }
   };
+
+  // With an index in place the walk stops reading files: it looks at names,
+  // and the index answers for what is inside them.
+  if (useIndex && !matcher.isGlob) {
+    yield* mergeResults(
+      walk(baseAbsPath, relBasePath),
+      streamIndexMatches(relBasePath, term, seenPaths, shouldInclude, limit)
+    );
+    return;
+  }
 
   yield* walk(baseAbsPath, relBasePath);
 }
@@ -717,6 +815,16 @@ router.get(
     // answers with the part of the volume it happens to have read — a term
     // found yesterday goes missing today, with nothing in the answer to say
     // why. Reading the tree meanwhile is slower and right.
+    const indexReady = await (async () => {
+      if (!(deepEnabled && searchConfig?.index?.enabled === true)) return false;
+      try {
+        return searchIndexStore.isReady(await getDb());
+      } catch {
+        return false;
+      }
+    })();
+
+    const useIndex = indexReady && baseAbs.startsWith(directories.volume);
 
     // Nothing can produce a content match once every content source has
     // finished, and that is the moment a reserve stops being worth waiting for.
@@ -731,6 +839,7 @@ router.get(
           deepEnabled,
           includeHiddenFiles,
           {
+            useIndex,
             limit,
             onContentSources: (count) => {
               contentSourcesLeft = count;
@@ -744,9 +853,12 @@ router.get(
           baseAbs,
           relBase,
           q,
+          // With an index the walk does not read files; the index answers for
+          // their contents.
           shouldInclude,
-          deepEnabled,
-          includeHiddenFiles
+          deepEnabled && !useIndex,
+          includeHiddenFiles,
+          { useIndex, limit }
         );
 
     // Counted apart and only put together at the end: sharing one running

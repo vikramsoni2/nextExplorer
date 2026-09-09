@@ -353,6 +353,16 @@ const migrate = (db) => {
       );
       version = 8;
     }
+    if (version < 9) {
+      logger.info('[DB Migration] Migrating to v9: Full-text search index...');
+      // eslint-disable-next-line global-require
+      db.exec(require('./searchIndexStore').SEARCH_INDEX_DDL);
+      db.prepare('INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)').run(
+        'schema_version',
+        String(9)
+      );
+      version = 9;
+    }
   })();
 };
 
