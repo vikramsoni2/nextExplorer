@@ -35,7 +35,10 @@ const hasPdfToText = async () => {
   });
 
   if (!available) {
-    logger.debug('pdftotext is not installed; PDF contents will not be searched');
+    // At debug level this said nothing on a default install, and a PDF search
+    // that quietly returns no match looks like a PDF with no matching text.
+    // Same level as the 7-Zip probe, for the same reason.
+    logger.warn('pdftotext is not installed; PDF contents will not be searched');
   }
   return available;
 };
