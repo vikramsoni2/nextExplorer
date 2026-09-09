@@ -30,10 +30,12 @@ describe('Path Utilities', () => {
   });
 
   describe('resolveVolumePath', () => {
-    it('should protect volume root boundaries', () => {
-      const resolved = pathUtils.resolveVolumePath('photo/jpg');
+    // `resolveVolumePath` became async when it started following symlinks to
+    // check where a path really lands, so both halves are awaited now.
+    it('should protect volume root boundaries', async () => {
+      const resolved = await pathUtils.resolveVolumePath('photo/jpg');
       expect(resolved).toBe(path.resolve(envContext.volumeDir, 'photo/jpg'));
-      expect(() => pathUtils.resolveVolumePath('../outside')).toThrow(/outside/);
+      await expect(pathUtils.resolveVolumePath('../outside')).rejects.toThrow(/outside/);
     });
   });
 

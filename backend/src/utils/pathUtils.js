@@ -1,7 +1,9 @@
 const path = require('path');
 const fs = require('fs');
+const fsp = require('fs/promises');
 const { directories, features, personal } = require('../config/index');
 const { pathExists } = require('./fsUtils');
+const { cachedForRequest, hasRequestContext } = require('./requestContext');
 const logger = require('./logger');
 
 const NAME_INVALID_PATTERN = /[\\/]/;
@@ -26,12 +28,226 @@ const normalizeRelativePath = (relativePath = '') => {
   return normalized;
 };
 
-const resolveVolumePath = (relativePath = '') => {
+/**
+ * Real (symlink-free) form of the configured roots, resolved once.
+ *
+ * Containment is a string comparison, which a symbolic link inside the volume
+ * defeats. Comparing real paths closes that, but the roots themselves are
+ * very often symlinks on a NAS (/mnt -> /volume1), so both sides have to be
+ * resolved or every request would be refused.
+ */
+const realRootCache = new Map();
+
+/**
+ * The one lookup here that is still synchronous, and deliberately.
+ *
+ * There are a handful of roots and each is resolved once for the life of the
+ * process, so this is a few calls at startup rather than one per path — the
+ * cost the rest of this file was made asynchronous to remove. Making it
+ * asynchronous would turn a memo into a promise several callers could race on,
+ * for nothing.
+ */
+const realRoot = (root) => {
+  if (!realRootCache.has(root)) {
+    try {
+      realRootCache.set(root, fs.realpathSync(root));
+    } catch {
+      // The root may not exist yet at startup; fall back to the literal path.
+      realRootCache.set(root, root);
+    }
+  }
+  return realRootCache.get(root);
+};
+
+// A dangling link may point at another dangling link. Bound the chase the way
+// the kernel does rather than trusting the filesystem to be acyclic.
+const MAX_SYMLINK_HOPS = 32;
+
+/**
+ * Asynchronous on purpose, and it is not a style preference.
+ *
+ * These run on every path a request touches, and a bulk operation resolves one
+ * per selected item — up to thirty-two hops each when links are chased. On a
+ * local disk that is microseconds. On the network mount most deployments point
+ * at, every one of them is a round trip, and the synchronous version made the
+ * only thread the server has wait for it: nothing else was served, not another
+ * request, not the liveness probe, not the response already half written.
+ */
+const lstatOrNull = async (target) => {
+  try {
+    return await fsp.lstat(target);
+  } catch {
+    return null;
+  }
+};
+
+const readLinkOrNull = async (target) => {
+  try {
+    return await fsp.readlink(target);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * A bulk operation resolves one path per selected item, and those paths share
+ * their parent directories. Only successful lookups are memoized: a path that
+ * did not exist a moment ago may have just been created by this very request,
+ * and answering "still missing" from a cache would be wrong.
+ */
+const realpathOrNull = (target) =>
+  cachedForRequest('realpath', target, async () => {
+    try {
+      return await fsp.realpath(target);
+    } catch {
+      return null;
+    }
+  });
+
+/**
+ * Confirm a resolved path really lives under its root once symlinks are
+ * followed. Paths that do not exist yet (a file about to be created) are
+ * checked through their closest existing ancestor.
+ *
+ * A broken link is neither: realpath fails on it, but it is not "not created
+ * yet" either — checking its parent instead would let `link -> /etc` through
+ * on the grounds that the directory holding the link is fine. Such a link is
+ * followed by hand and its target checked as a path in its own right.
+ */
+const assertRealPathWithinRoot = async (
+  absolutePath,
+  root,
+  label = 'the configured volume root',
+  hops = 0
+) => {
+  const expectedRoot = realRoot(root);
+  const rootWithSep = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  const realWithSep = expectedRoot.endsWith(path.sep) ? expectedRoot : `${expectedRoot}${path.sep}`;
+  const outside = () => new Error(`Resolved path is outside ${label}.`);
+  const contained = (candidate) => candidate === expectedRoot || candidate.startsWith(realWithSep);
+  const namedInside = (candidate) =>
+    candidate === root ||
+    candidate.startsWith(rootWithSep) ||
+    candidate === expectedRoot ||
+    candidate.startsWith(realWithSep);
+
+  // The walk below accepts a path it could not resolve once it has climbed
+  // above the root — the root itself may not exist yet at startup, and there is
+  // nothing above it for this function to judge. That is only safe for a path
+  // already known to be inside the root by name, which every caller does check
+  // just before calling. Checking it here as well is what makes the guarantee
+  // this function's own rather than a convention the next caller has to know:
+  // the name says within the root, so nothing outside it gets in, whether or
+  // not any of it exists.
+  if (hops === 0 && !namedInside(absolutePath)) throw outside();
+
+  // Resolving the whole path per entry is the expensive part: realpath walks
+  // every segment, where a bulk operation shares all but the last. If the
+  // parent directory really is inside the root and this entry is not itself a
+  // link, then neither can it leave — one lstat instead of a full walk, and
+  // the parent's own resolution is memoized for the rest of the request.
+  // Only inside a request, where the parent's resolution is memoized and paid
+  // once for the whole batch. On its own it would just add a lookup.
+  if (hops === 0 && hasRequestContext()) {
+    const parent = path.dirname(absolutePath);
+    if (parent !== absolutePath && (parent === root || parent.startsWith(rootWithSep))) {
+      const realParent = await realpathOrNull(parent);
+      if (realParent && contained(realParent)) {
+        const entry = await lstatOrNull(absolutePath);
+        if (entry && !entry.isSymbolicLink()) return;
+      }
+    }
+  }
+
+  let candidate = absolutePath;
+
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop
+    const realCandidate = await realpathOrNull(candidate);
+
+    if (realCandidate) {
+      if (!contained(realCandidate)) throw outside();
+      return;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    const link = await readLinkOrNull(candidate);
+    if (link !== null) {
+      if (hops >= MAX_SYMLINK_HOPS) {
+        throw new Error('Too many levels of symbolic links.');
+      }
+      const target = path.resolve(path.dirname(candidate), link);
+      // The target of a broken link may not exist anywhere, so there is no real
+      // path to compare. Judge it on the name: a target outside both spellings
+      // of the root is an escape whether or not it exists yet.
+      if (!namedInside(target)) throw outside();
+      await assertRealPathWithinRoot(target, root, label, hops + 1);
+      return;
+    }
+
+    const parent = path.dirname(candidate);
+    // Nothing above the root is ours to judge: the root itself may not exist
+    // yet at startup, and the lexical check ran before we got here.
+    if (parent === candidate || (parent !== root && !parent.startsWith(rootWithSep))) return;
+    candidate = parent;
+  }
+};
+
+/**
+ * Whether this path is somebody's personal folder, reached the wrong way.
+ *
+ * Personal folders default to `<volume>/_users`, which puts every account's
+ * private files inside the tree everyone browses. The name was kept out of
+ * listings and nothing else: asking for `_users/alice` by name answered it, and
+ * the volume's access rules had no reason to refuse — whose folder it was never
+ * came up. An ordinary account could read another's files, and delete them.
+ *
+ * The personal space is how an account reaches its own folder, and it derives
+ * the directory from who is asking rather than from what was asked for. Reached
+ * through the volume there is no such derivation and no question of ownership
+ * is ever put, so the volume does not go there at all.
+ *
+ * Compared by name, against both the configured root and its real path, so a
+ * root that is itself reached through a link still matches. Both are resolved
+ * once for the life of the process, so this costs nothing per request.
+ *
+ * What it does not cover is a symbolic link planted inside the volume and
+ * aimed at the user root. Resolving every path to catch that added a round trip
+ * per item, which a bulk operation multiplies by every file in it — and the
+ * application offers no way to create such a link: extraction passes `-snl-`
+ * and then refuses an archive that produced one anyway (see archiveService).
+ * Planting one needs shell access to the host, which already grants the files
+ * this is protecting. If a way to create a link is ever added, this is the
+ * comment that has to change with it.
+ *
+ * A user root that *is* the volume is left alone: refusing there would lose the
+ * volume entirely, which is a worse answer than the question.
+ */
+const isInsidePersonalRoot = (absolutePath) => {
+  const userRoot = directories.userRoot;
+  if (!userRoot) return false;
+
+  for (const root of new Set([userRoot, realRoot(userRoot)])) {
+    if (root === directories.volume || root === realRoot(directories.volume)) continue;
+    const withSep = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+    if (absolutePath === root || absolutePath.startsWith(withSep)) return true;
+  }
+
+  return false;
+};
+
+const resolveVolumePath = async (relativePath = '') => {
   const safeRelativePath = normalizeRelativePath(relativePath);
   const absolutePath = path.resolve(directories.volume, safeRelativePath);
 
   if (absolutePath !== directories.volume && !absolutePath.startsWith(directories.volumeWithSep)) {
     throw new Error('Resolved path is outside the configured volume root.');
+  }
+
+  await assertRealPathWithinRoot(absolutePath, directories.volume);
+
+  if (isInsidePersonalRoot(absolutePath)) {
+    throw new Error('Personal folders are reached through the personal space, not the volume.');
   }
 
   return absolutePath;
@@ -142,7 +358,14 @@ const parsePathSpace = (relativePath = '') => {
   return { space: 'volume', rel: normalized };
 };
 
-const getUserFolderName = (user = {}) => {
+/**
+ * The folder names this account could be given, best first.
+ *
+ * `USER_FOLDER_NAME_ORDER` decides the preference — `username,id` to reuse an
+ * existing /home/<username> layout, for instance — and `id` is always in the
+ * list, so the walk always ends somewhere unique.
+ */
+const getUserFolderNameCandidates = (user = {}) => {
   const candidates = [];
 
   const configuredOrder = Array.isArray(personal?.userFolderNameOrder)
@@ -177,19 +400,56 @@ const getUserFolderName = (user = {}) => {
 
   candidates.push('user');
 
+  const valid = [];
   for (const candidate of candidates) {
     try {
       const safe = ensureValidName(String(candidate));
-      if (safe) return safe;
+      if (safe && !valid.includes(safe)) valid.push(safe);
     } catch (_) {
       // try next candidate
     }
   }
 
-  return 'user';
+  return valid.length > 0 ? valid : ['user'];
 };
 
-const getUserRootDir = (user) => {
+/**
+ * The folder this account owns.
+ *
+ * The name it was given when the account was first seen, if it has one. Two
+ * accounts can otherwise derive the same name — `username` carries no
+ * uniqueness constraint, and `bob@a.com` and `bob@b.com` both yield `bob` —
+ * and each would then be handed the other's private folder. The name is
+ * claimed once and stored (see services/personalFolders.js), so what is
+ * derived here is only the fallback for an account that has not been through
+ * that yet.
+ */
+const getUserFolderName = (user = {}) => {
+  const claimed = user?.personalFolderName || user?.personal_folder_name;
+  if (typeof claimed === 'string' && claimed.trim()) {
+    try {
+      const safe = ensureValidName(claimed.trim());
+      if (safe) return safe;
+    } catch (_) {
+      // A stored name that is no longer valid falls back to derivation.
+    }
+  }
+
+  return getUserFolderNameCandidates(user)[0];
+};
+
+/**
+ * The directory this account owns, created if it is not there yet.
+ *
+ * Asynchronous, and the creation happens after the check rather than before it.
+ * Both used to be the other way round: two `mkdirSync` calls ran on every
+ * personal path — blocking the event loop on a hot path — and they ran before
+ * anything had confirmed the directory belonged under the configured root, so a
+ * name that was about to be refused was created on disk first. The comment
+ * justifying the synchronous calls said they kept the resolver synchronous; the
+ * resolver had since become asynchronous, and the justification outlived it.
+ */
+const getUserRootDir = async (user) => {
   if (!PERSONAL_ENABLED) {
     throw new Error('Personal directories are disabled.');
   }
@@ -201,35 +461,28 @@ const getUserRootDir = (user) => {
   const folderName = getUserFolderName(user);
   const userRoot = path.resolve(base, folderName);
 
-  // Ensure base and user directory exist (sync to keep resolver synchronous)
-  try {
-    fs.mkdirSync(base, { recursive: true });
-  } catch (_) {
-    // ignore mkdir errors here; later operations will surface issues
-  }
-
-  try {
-    fs.mkdirSync(userRoot, { recursive: true });
-  } catch (_) {
-    // ignore mkdir errors here; later operations will surface issues
-  }
-
-  // Safety: ensure userRoot stays under configured userRootWithSep
   if (userRoot !== base && !userRoot.startsWith(directories.userRootWithSep)) {
     throw new Error('Resolved user directory is outside the configured user root.');
   }
 
+  // Failures are left to the operation that follows: it is the one that knows
+  // whether the directory was needed, and it reports in terms of what was asked
+  // for rather than in terms of a directory nobody mentioned.
+  await fsp.mkdir(userRoot, { recursive: true }).catch(() => {});
+
   return userRoot;
 };
 
-const resolvePersonalPath = (relativePath = '', user) => {
+const resolvePersonalPath = async (relativePath = '', user) => {
   const safeRelativePath = normalizeRelativePath(relativePath);
-  const userRoot = getUserRootDir(user);
+  const userRoot = await getUserRootDir(user);
   const absolutePath = path.resolve(userRoot, safeRelativePath);
 
   if (absolutePath !== userRoot && !absolutePath.startsWith(userRoot + path.sep)) {
     throw new Error('Resolved path is outside the configured user directory.');
   }
+
+  await assertRealPathWithinRoot(absolutePath, userRoot, 'the configured user directory');
 
   return absolutePath;
 };
@@ -263,7 +516,13 @@ const resolveLogicalPath = async (
       throw new Error('User context is required for personal paths.');
     }
 
-    const absolutePath = resolvePersonalPath(rel, user);
+    // Awaited, which is the whole point of it: `resolvePersonalPath` checks that
+    // the path is still inside the user's directory after every symbolic link
+    // has been followed, and that check lives in the promise. Left unawaited it
+    // handed back a promise as if it were a path — every personal path became a
+    // 404, and a path that should have been refused was refused by nobody: the
+    // rejection had no listener, which is how a request ends a Node process.
+    const absolutePath = await resolvePersonalPath(rel, user);
     const logical = rel ? `personal/${rel}` : 'personal';
 
     return {
@@ -299,6 +558,8 @@ const resolveLogicalPath = async (
       throw new Error('Resolved path is outside the assigned volume.');
     }
 
+    await assertRealPathWithinRoot(absolutePath, userVolume.path, 'the assigned volume');
+
     return {
       space: 'volume',
       relativePath: rel,
@@ -308,7 +569,7 @@ const resolveLogicalPath = async (
     };
   }
 
-  const absolutePath = resolveVolumePath(rel);
+  const absolutePath = await resolveVolumePath(rel);
 
   return {
     space: 'volume',
@@ -389,7 +650,7 @@ const resolveSharePath = async (
     const combinedPath =
       isDirShare && innerPath ? combineRelativePath(share.sourcePath, innerPath) : share.sourcePath;
 
-    absolutePath = resolvePersonalPath(combinedPath, owner);
+    absolutePath = await resolvePersonalPath(combinedPath, owner);
   } else if (share.sourceSpace === 'user_volume') {
     const [volumeId, ...rest] = String(share.sourcePath || '')
       .split('/')
@@ -420,11 +681,13 @@ const resolveSharePath = async (
     if (absolutePath !== userVolume.path && !absolutePath.startsWith(volumePathWithSep)) {
       throw new Error('Resolved path is outside the assigned volume.');
     }
+
+    await assertRealPathWithinRoot(absolutePath, userVolume.path, 'the assigned volume');
   } else {
     const combinedPath =
       isDirShare && innerPath ? combineRelativePath(share.sourcePath, innerPath) : share.sourcePath;
 
-    absolutePath = resolveVolumePath(combinedPath);
+    absolutePath = await resolveVolumePath(combinedPath);
   }
 
   return {
@@ -449,11 +712,13 @@ const resolveItemPaths = async (item = {}, options = {}) => {
 };
 
 module.exports = {
+  // Exported so the guarantee in its name can be tested directly, and so a
+  // caller outside this file gets the same one.
+  assertRealPathWithinRoot,
   normalizeRelativePath,
   resolveVolumePath,
   resolvePersonalPath,
   resolveLogicalPath,
-  resolveSharePath,
   combineRelativePath,
   splitName,
   findAvailableName,
@@ -461,6 +726,6 @@ module.exports = {
   ensureValidName,
   parsePathSpace,
   getUserFolderName,
-  getUserRootDir,
+  getUserFolderNameCandidates,
   resolveItemPaths,
 };
