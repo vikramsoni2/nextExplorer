@@ -4,8 +4,9 @@ const githubRepoUrl = 'https://github.com/vikramsoni2/nextExplorer';
 
 export default defineConfig({
   lang: 'en-US',
-  title: 'nextExplorer',
+  title: 'NextExplorer',
   description: 'Modern, self-hosted file explorer',
+  head: [['link', { rel: 'icon', href: '/images/logo.png' }]],
   themeConfig: {
     logo: '/images/logo.png',
     search: {
